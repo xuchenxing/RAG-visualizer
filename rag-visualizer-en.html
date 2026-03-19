@@ -1,0 +1,2715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG System Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c10;
+  --bg2: #0f1218;
+  --bg3: #151a22;
+  --bg4: #1c2330;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --text2: #8892a4;
+  --text3: #4a5568;
+  --accent: #3b82f6;
+  --accent2: #60a5fa;
+  --accent-bg: rgba(59,130,246,0.1);
+  --accent-border: rgba(59,130,246,0.25);
+  --green: #10b981;
+  --green-bg: rgba(16,185,129,0.1);
+  --green-border: rgba(16,185,129,0.25);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.1);
+  --amber-border: rgba(245,158,11,0.25);
+  --purple: #8b5cf6;
+  --purple-bg: rgba(139,92,246,0.1);
+  --purple-border: rgba(139,92,246,0.25);
+  --coral: #f43f5e;
+  --coral-bg: rgba(244,63,94,0.1);
+  --coral-border: rgba(244,63,94,0.25);
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════
+   LAYOUT
+═══════════════════════════════ */
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: 56px 1fr;
+  min-height: 100vh;
+}
+
+/* ═══════════════════════════════
+   TOPBAR
+═══════════════════════════════ */
+.topbar {
+  grid-column: 1/-1;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+}
+.topbar-logo {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.topbar-logo .dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.topbar-sep { flex: 1; }
+.topbar-badge {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text3);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+.query-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 6px 10px 6px 12px;
+  flex: 1;
+  max-width: 440px;
+}
+.query-bar input {
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+.query-bar input::placeholder { color: var(--text3); }
+.query-bar .q-label {
+  font-size: 10px;
+  color: var(--text3);
+  white-space: nowrap;
+  font-family: var(--mono);
+}
+.run-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: 5px;
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.run-btn:hover { background: var(--accent2); transform: translateY(-1px); }
+.run-btn:active { transform: none; }
+
+/* ═══════════════════════════════
+   SIDEBAR
+═══════════════════════════════ */
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  padding: 0 16px;
+  margin-bottom: 8px;
+}
+.sidebar-section-label {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.stage-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  position: relative;
+}
+.stage-nav-item:hover { background: var(--bg3); }
+.stage-nav-item.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+.stage-nav-item.done .stage-icon { opacity: 0.5; }
+
+.stage-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.stage-nav-item.active .stage-icon { background: var(--accent); }
+
+.stage-nav-text { flex: 1; min-width: 0; }
+.stage-nav-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  display: block;
+}
+.stage-nav-item.active .stage-nav-name { color: var(--accent2); }
+.stage-nav-sub {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+  display: block;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 16px;
+}
+
+.tech-panel {
+  padding: 12px 16px;
+}
+.tech-panel-title {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.tech-select-row { margin-bottom: 8px; }
+.tech-select-label {
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 4px;
+  display: block;
+}
+.tech-select {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 6px 8px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%234a5568' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+.tech-select:focus { border-color: var(--accent-border); }
+.tech-select option { background: var(--bg2); }
+
+/* ═══════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════ */
+.main {
+  overflow-y: auto;
+  padding: 28px 32px;
+  background: var(--bg);
+}
+
+.panel { display: none; }
+.panel.active {
+  display: block;
+  animation: panelIn 0.25s ease;
+}
+@keyframes panelIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+
+/* ═══════════════════════════════
+   PANEL HEADER
+═══════════════════════════════ */
+.panel-head {
+  margin-bottom: 28px;
+}
+.panel-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.panel-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+.panel-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+.panel-desc {
+  font-size: 13px;
+  color: var(--text2);
+  margin-top: 8px;
+  line-height: 1.6;
+  font-family: var(--mono);
+  font-weight: 300;
+  max-width: 560px;
+}
+.panel-badge {
+  font-size: 11px;
+  font-family: var(--mono);
+  padding: 5px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+/* ═══════════════════════════════
+   IO FLOW
+═══════════════════════════════ */
+.io-flow {
+  display: grid;
+  grid-template-columns: 1fr 80px 1fr;
+  gap: 0;
+  margin-bottom: 24px;
+  align-items: stretch;
+}
+
+.io-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.io-card-head {
+  padding: 10px 16px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.io-card-title {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.io-type-badge {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--bg4);
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+.io-body {
+  padding: 14px 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text2);
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-height: 160px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.io-body::-webkit-scrollbar { width: 4px; }
+.io-body::-webkit-scrollbar-track { background: transparent; }
+.io-body::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+.c-key { color: #60a5fa; }
+.c-str { color: #34d399; }
+.c-num { color: #f59e0b; }
+.c-cmt { color: #374151; }
+.c-type { color: #a78bfa; }
+.c-hi { color: var(--accent2); font-weight: 500; }
+
+.flow-arrow-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px 0;
+}
+.flow-arrow-svg {
+  width: 40px;
+  height: 24px;
+}
+.flow-arrow-label {
+  font-size: 9px;
+  font-family: var(--mono);
+  color: var(--text3);
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════
+   SECTION CARDS
+═══════════════════════════════ */
+.section-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.section-card-title {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+
+/* ═══════════════════════════════
+   CHUNK VISUALIZATION
+═══════════════════════════════ */
+.chunk-list { display: flex; flex-direction: column; gap: 8px; }
+.chunk-item {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+  transition: border-color 0.15s;
+}
+.chunk-item:hover { border-left-color: var(--accent2); }
+.chunk-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.chunk-id { font-size: 10px; font-family: var(--mono); color: var(--accent2); }
+.chunk-stat { font-size: 10px; font-family: var(--mono); color: var(--text3); }
+.chunk-text { font-size: 12px; font-family: var(--mono); color: var(--text2); line-height: 1.6; }
+
+/* ═══════════════════════════════
+   VECTOR VISUALIZATION
+═══════════════════════════════ */
+.vec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.vec-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 72px;
+  padding: 4px 0 0;
+}
+.vbar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  min-height: 3px;
+  transition: height 0.4s ease, background 0.3s;
+}
+.vec-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+.vec-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.vec-info-label { font-size: 11px; font-family: var(--mono); color: var(--text3); }
+.vec-info-val { font-size: 12px; font-family: var(--mono); color: var(--text); font-weight: 500; }
+
+.dim-sample {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.dim-val {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--bg4);
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+.dim-val.pos { color: var(--green); border-color: var(--green-border); background: var(--green-bg); }
+.dim-val.neg { color: var(--coral); border-color: var(--coral-border); background: var(--coral-bg); }
+
+/* ═══════════════════════════════
+   INDEX VIS
+═══════════════════════════════ */
+.index-vis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.index-canvas-wrap {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  height: 200px;
+  position: relative;
+}
+.index-canvas-wrap canvas { width: 100%; height: 100%; display: block; }
+.index-stats { display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-label { font-size: 11px; font-family: var(--mono); color: var(--text3); }
+.stat-val { font-size: 13px; font-family: var(--mono); color: var(--text); font-weight: 500; }
+.stat-val.good { color: var(--green); }
+.stat-val.warn { color: var(--amber); }
+
+/* ═══════════════════════════════
+   RETRIEVAL
+═══════════════════════════════ */
+.result-list { display: flex; flex-direction: column; gap: 8px; }
+.result-item {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: all 0.15s;
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+.result-item:hover { border-color: var(--border2); background: var(--bg4); }
+.result-rank {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text3);
+  padding-top: 2px;
+}
+.result-item.top1 .result-rank { color: var(--accent2); }
+.result-text-block { min-width: 0; }
+.result-id { font-size: 10px; font-family: var(--mono); color: var(--accent); margin-bottom: 4px; }
+.result-text { font-size: 12px; font-family: var(--mono); color: var(--text2); line-height: 1.6; }
+.result-score-col { min-width: 100px; }
+.result-score-val {
+  font-size: 14px;
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--text);
+  text-align: right;
+  margin-bottom: 4px;
+}
+.result-item.top1 .result-score-val { color: var(--green); }
+.score-bar-bg {
+  height: 4px;
+  background: var(--bg4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+.result-item.top1 .score-bar-fill { background: var(--green); }
+
+/* ═══════════════════════════════
+   PROMPT BUILDER
+═══════════════════════════════ */
+.prompt-builder {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.prompt-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.prompt-tab {
+  padding: 10px 16px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s;
+}
+.prompt-tab:hover { color: var(--text2); }
+.prompt-tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+.prompt-tab-content { display: none; padding: 16px; }
+.prompt-tab-content.active { display: block; }
+.prompt-block {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text2);
+  white-space: pre-wrap;
+}
+.p-sys { color: var(--text3); }
+.p-ctx { color: var(--green); }
+.p-q { color: var(--accent2); }
+.p-hi { color: var(--amber); }
+
+.final-answer {
+  background: var(--bg2);
+  border: 1px solid var(--green-border);
+  border-radius: 10px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+}
+.final-answer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.final-answer-dot {
+  width: 8px; height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+.final-answer-title { font-size: 11px; font-family: var(--mono); color: var(--green); text-transform: uppercase; letter-spacing: 0.08em; }
+.final-answer-text { font-size: 13px; color: var(--text); line-height: 1.8; font-family: var(--mono); font-weight: 300; }
+.answer-step {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+.answer-step-num {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--accent2);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 3px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.answer-step-text { font-size: 13px; font-family: var(--mono); color: var(--text2); line-height: 1.6; }
+
+/* ═══════════════════════════════
+   PIPELINE FLOW (top of page)
+═══════════════════════════════ */
+.pipeline-overview {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 28px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  overflow-x: auto;
+}
+.pipe-step {
+  flex: 1;
+  min-width: 100px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.pipe-step:hover { background: var(--bg3); }
+.pipe-step.active { background: var(--accent-bg); }
+.pipe-step-num { font-size: 9px; font-family: var(--mono); color: var(--text3); margin-bottom: 3px; }
+.pipe-step.active .pipe-step-num { color: var(--accent); }
+.pipe-step-name { font-size: 12px; font-weight: 600; color: var(--text2); white-space: nowrap; }
+.pipe-step.active .pipe-step-name { color: var(--accent2); }
+.pipe-sep {
+  font-size: 16px;
+  color: var(--text3);
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+/* ═══════════════════════════════
+   MISC
+═══════════════════════════════ */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+
+.metric-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  text-align: center;
+}
+.metric-label { font-size: 10px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.metric-val { font-size: 20px; font-weight: 700; color: var(--text); }
+.metric-val.accent { color: var(--accent2); }
+.metric-val.green { color: var(--green); }
+.metric-val.amber { color: var(--amber); }
+.metric-sub { font-size: 10px; font-family: var(--mono); color: var(--text3); margin-top: 3px; }
+
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+.tag-blue { color: var(--accent2); background: var(--accent-bg); border-color: var(--accent-border); }
+.tag-green { color: var(--green); background: var(--green-bg); border-color: var(--green-border); }
+.tag-amber { color: var(--amber); background: var(--amber-bg); border-color: var(--amber-border); }
+.tag-purple { color: var(--purple); background: var(--purple-bg); border-color: var(--purple-border); }
+.tag-coral { color: var(--coral); background: var(--coral-bg); border-color: var(--coral-border); }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+/* ═══════════════════════════════
+   PROCESS STEP INDICATOR
+═══════════════════════════════ */
+.process-steps {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.ps-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text3);
+  padding: 4px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+.ps-item.active { color: var(--accent2); background: var(--accent-bg); border-color: var(--accent-border); }
+.ps-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* highlight box */
+.highlight-box {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text2);
+  line-height: 1.7;
+}
+.highlight-box strong { color: var(--accent2); font-weight: 500; }
+
+/* ── ANIMATION UTILITIES ── */
+@keyframes slideInUp {
+  from { opacity:0; transform:translateY(14px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity:0; } to { opacity:1; }
+}
+@keyframes scaleIn {
+  from { opacity:0; transform:scale(0.88); }
+  to   { opacity:1; transform:scale(1); }
+}
+@keyframes barGrow {
+  from { transform: scaleY(0); } to { transform: scaleY(1); }
+}
+@keyframes tokenPop {
+  0%   { opacity:0; transform:scale(0.6) translateY(6px); }
+  60%  { transform:scale(1.1) translateY(-2px); }
+  100% { opacity:1; transform:scale(1) translateY(0); }
+}
+@keyframes scanLine {
+  from { left:0; } to { left:100%; }
+}
+@keyframes typeCursor {
+  0%,100% { opacity:1; } 50% { opacity:0; }
+}
+@keyframes pulseRing {
+  0%   { transform:scale(1);   opacity:0.8; }
+  100% { transform:scale(1.8); opacity:0; }
+}
+@keyframes flowDot {
+  0%   { transform:translateX(0) scale(1);   opacity:1; }
+  50%  { transform:translateX(40px) scale(0.7); opacity:0.6; }
+  100% { transform:translateX(80px) scale(0.3); opacity:0; }
+}
+@keyframes resultSlide {
+  from { opacity:0; transform:translateX(-12px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes scoreBarAnim {
+  from { width:0; } to { width:var(--target-w); }
+}
+.anim-slide-up   { animation: slideInUp 0.35s ease both; }
+.anim-fade-in    { animation: fadeIn 0.4s ease both; }
+.anim-scale-in   { animation: scaleIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
+.anim-token-pop  { animation: tokenPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+.anim-result     { animation: resultSlide 0.3s ease both; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="topbar-logo">
+    <div class="dot"></div>
+    RAG Visualizer
+  </div>
+  <div class="query-bar">
+    <span class="q-label">Query&nbsp;›</span>
+    <input type="text" id="globalQuery" value="How tall is the Hall of Supreme Harmony, and what are its historical stories?" placeholder="Enter your query...">
+  </div>
+  <button class="run-btn" onclick="updateAll()">Trace Full Pipeline →</button>
+  <div class="topbar-sep"></div>
+  <div class="topbar-badge">Simulation · No API Required</div>
+</header>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Pipeline Stages</div>
+    <div class="stage-nav-item active" id="nav0" onclick="goTo(0)">
+      <div class="stage-icon" style="background:var(--accent-bg);color:var(--accent2)">📄</div>
+      <div class="stage-nav-text">
+        <span class="stage-nav-name">Document Ingestion</span>
+        <span class="stage-nav-sub">Parse · Clean · Chunk</span>
+      </div>
+    </div>
+    <div class="stage-nav-item" id="nav1" onclick="goTo(1)">
+      <div class="stage-icon" style="background:var(--amber-bg);color:var(--amber)">⚡</div>
+      <div class="stage-nav-text">
+        <span class="stage-nav-name">Embedding</span>
+        <span class="stage-nav-sub">Semantic Encoding · Vectorize</span>
+      </div>
+    </div>
+    <div class="stage-nav-item" id="nav2" onclick="goTo(2)">
+      <div class="stage-icon" style="background:var(--purple-bg);color:var(--purple)">🗄️</div>
+      <div class="stage-nav-text">
+        <span class="stage-nav-name">Indexing</span>
+        <span class="stage-nav-sub">HNSW · IVF · Storage</span>
+      </div>
+    </div>
+    <div class="stage-nav-item" id="nav3" onclick="goTo(3)">
+      <div class="stage-icon" style="background:var(--green-bg);color:var(--green)">🔍</div>
+      <div class="stage-nav-text">
+        <span class="stage-nav-name">Retrieval</span>
+        <span class="stage-nav-sub">ANN Search · Reranking</span>
+      </div>
+    </div>
+    <div class="stage-nav-item" id="nav4" onclick="goTo(4)">
+      <div class="stage-icon" style="background:var(--coral-bg);color:var(--coral)">✨</div>
+      <div class="stage-nav-text">
+        <span class="stage-nav-name">Augmented Generation</span>
+        <span class="stage-nav-sub">Prompt · LLM · Answer</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="tech-panel">
+    <div class="tech-panel-title">Tech Config</div>
+
+    <div class="tech-select-row">
+      <label class="tech-select-label">Chunking Strategy</label>
+      <select class="tech-select" id="sel-chunk" onchange="updateAll()">
+        <option value="fixed">Fixed Size (512 chars)</option>
+        <option value="semantic">Semantic Chunking</option>
+        <option value="sentence">Sentence Splitting</option>
+        <option value="recursive">Recursive Splitting</option>
+      </select>
+    </div>
+
+    <div class="tech-select-row">
+      <label class="tech-select-label">Embedding Model</label>
+      <select class="tech-select" id="sel-embed" onchange="updateAll()">
+        <option value="te3s">text-embedding-3-small</option>
+        <option value="te3l">text-embedding-3-large</option>
+        <option value="bge">BGE-M3 (BAAI)</option>
+        <option value="e5">E5-large-v2</option>
+        <option value="jina">Jina-v3</option>
+      </select>
+    </div>
+
+    <div class="tech-select-row">
+      <label class="tech-select-label">Vector Database</label>
+      <select class="tech-select" id="sel-db" onchange="updateAll()">
+        <option value="milvus">Milvus (Open Source)</option>
+        <option value="pinecone">Pinecone</option>
+        <option value="weaviate">Weaviate</option>
+        <option value="qdrant">Qdrant</option>
+        <option value="pgvector">pgvector</option>
+        <option value="chroma">ChromaDB</option>
+        <option value="es">Elasticsearch</option>
+      </select>
+    </div>
+
+    <div class="tech-select-row">
+      <label class="tech-select-label">Index Algorithm</label>
+      <select class="tech-select" id="sel-index" onchange="updateAll()">
+        <option value="hnsw">HNSW (Recommended)</option>
+        <option value="flat">Flat / Exact</option>
+        <option value="ivf">IVF (Large Scale)</option>
+      </select>
+    </div>
+
+    <div class="tech-select-row">
+      <label class="tech-select-label">Retrieval Strategy</label>
+      <select class="tech-select" id="sel-retrieval" onchange="updateAll()">
+        <option value="semantic">Pure Semantic Search</option>
+        <option value="hybrid">Hybrid Search</option>
+        <option value="rerank">Semantic + Rerank</option>
+        <option value="mmr">MMR Diversity Search</option>
+      </select>
+    </div>
+
+    <div class="tech-select-row">
+      <label class="tech-select-label">Language Model</label>
+      <select class="tech-select" id="sel-llm" onchange="updateAll()">
+        <option value="gpt4o">GPT-4o</option>
+        <option value="claude35">Claude 3.5 Sonnet</option>
+        <option value="gemini">Gemini 1.5 Pro</option>
+        <option value="llama3">Llama-3.1 70B</option>
+        <option value="qwen">Qwen2.5 72B</option>
+      </select>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+<!-- PIPELINE OVERVIEW BAR -->
+<div class="pipeline-overview">
+  <div class="pipe-step active" id="pipe0" onclick="goTo(0)">
+    <div class="pipe-step-num">01</div>
+    <div class="pipe-step-name">Document Ingestion</div>
+  </div>
+  <div class="pipe-sep">›</div>
+  <div class="pipe-step" id="pipe1" onclick="goTo(1)">
+    <div class="pipe-step-num">02</div>
+    <div class="pipe-step-name">Embedding</div>
+  </div>
+  <div class="pipe-sep">›</div>
+  <div class="pipe-step" id="pipe2" onclick="goTo(2)">
+    <div class="pipe-step-num">03</div>
+    <div class="pipe-step-name">Indexing</div>
+  </div>
+  <div class="pipe-sep">›</div>
+  <div class="pipe-step" id="pipe3" onclick="goTo(3)">
+    <div class="pipe-step-num">04</div>
+    <div class="pipe-step-name">Retrieval</div>
+  </div>
+  <div class="pipe-sep">›</div>
+  <div class="pipe-step" id="pipe4" onclick="goTo(4)">
+    <div class="pipe-step-num">05</div>
+    <div class="pipe-step-name">Augmented Generation</div>
+  </div>
+</div>
+
+<!-- ═══════════ PANEL 0: INGESTION ═══════════ -->
+<div class="panel active" id="panel0">
+  <div class="panel-head">
+    <div class="panel-head-row">
+      <div>
+        <div class="panel-num">Stage 01 / 05</div>
+        <div class="panel-title">Document Ingestion & Chunking</div>
+        <div class="panel-desc" id="p0-desc">Parse, clean and split the source document into semantic chunks</div>
+      </div>
+      <span class="tag tag-blue" id="p0-tag">Fixed · 512 chars</span>
+    </div>
+  </div>
+
+  <div class="process-steps">
+    <div class="ps-item active"><div class="ps-dot"></div>File Parsing</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Text Cleaning</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Chunking</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Metadata</div>
+  </div>
+
+  <div class="io-flow">
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">INPUT — Raw Document</span>
+        <span class="io-type-badge">File</span>
+      </div>
+      <div class="io-body">{
+  <span class="c-key">"filename"</span>: <span class="c-str">"palace_museum.pdf"</span>,
+  <span class="c-key">"type"</span>: <span class="c-str">"application/pdf"</span>,
+  <span class="c-key">"pages"</span>: <span class="c-num">8</span>,
+  <span class="c-key">"size_bytes"</span>: <span class="c-num">286720</span>,
+  <span class="c-key">"raw_text_chars"</span>: <span class="c-num">12680</span>,
+  <span class="c-key">"language"</span>: <span class="c-str">"zh-CN"</span>,
+  <span class="c-key">"metadata"</span>: {
+    <span class="c-key">"title"</span>: <span class="c-str">"Palace Museum Introduction"</span>,
+    <span class="c-key">"source"</span>: <span class="c-str">"palace-museum.org.cn"</span>,
+    <span class="c-key">"created"</span>: <span class="c-str">"2024-09-15"</span>
+  }
+}</div>
+    </div>
+    <div class="flow-arrow-col">
+      <svg class="flow-arrow-svg" viewBox="0 0 40 24" fill="none">
+        <path d="M4 12 H32 M24 5 L32 12 L24 19" stroke="#374151" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="flow-arrow-label" id="p0-arrow">Chunk</div>
+    </div>
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">OUTPUT — Chunk Array</span>
+        <span class="io-type-badge" id="p0-out-type">Chunk[]</span>
+      </div>
+      <div class="io-body" id="p0-output"><!-- dynamic --></div>
+    </div>
+  </div>
+
+  <!-- CHUNKING COMPARISON: same source text, 4 strategies side by side -->
+  <div class="section-card" style="margin-bottom:16px">
+    <div class="section-card-title" style="margin-bottom:12px">Same source text · four chunking strategies compared</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px" id="chunk-compare-grid"><!-- dynamic --></div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Each color = one Chunk · Color boundary = cut point · vertical bar = overlap zone</div>
+  </div>
+
+  <!-- CURRENT STRATEGY DETAIL -->
+  <div class="section-card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="section-card-title" style="margin-bottom:0">Chunks generated by current strategy</div>
+      <div id="p0-chunk-stats" style="font-size:11px;font-family:var(--mono);color:var(--text3)"></div>
+    </div>
+    <div class="chunk-list" id="chunk-list"><!-- dynamic --></div>
+  </div>
+
+  <div class="grid4" id="p0-metrics"><!-- dynamic --></div>
+  <div class="highlight-box" id="p0-highlight"><!-- dynamic --></div>
+</div>
+
+<!-- ═══════════ PANEL 1: EMBEDDING ═══════════ -->
+<div class="panel" id="panel1">
+  <div class="panel-head">
+    <div class="panel-head-row">
+      <div>
+        <div class="panel-num">Stage 02 / 05</div>
+        <div class="panel-title">Vector Embedding</div>
+        <div class="panel-desc" id="p1-desc">Encoding text chunks into high-dimensional dense vectors</div>
+      </div>
+      <span class="tag tag-amber" id="p1-tag">1536d</span>
+    </div>
+  </div>
+
+  <div class="process-steps">
+    <div class="ps-item active"><div class="ps-dot"></div>Tokenization</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Token Encoding</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Transformer Inference</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Normalization</div>
+  </div>
+
+  <div class="io-flow">
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">INPUT — Text Chunk</span>
+        <span class="io-type-badge">string</span>
+      </div>
+      <div class="io-body" id="p1-input"><!-- dynamic --></div>
+    </div>
+    <div class="flow-arrow-col">
+      <svg class="flow-arrow-svg" viewBox="0 0 40 24" fill="none">
+        <path d="M4 12 H32 M24 5 L32 12 L24 19" stroke="#374151" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="flow-arrow-label" id="p1-arrow-label">Embed</div>
+    </div>
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">OUTPUT — Vector</span>
+        <span class="io-type-badge" id="p1-out-type">float32[]</span>
+      </div>
+      <div class="io-body" id="p1-output"><!-- dynamic --></div>
+    </div>
+  </div>
+
+  <!-- TOKEN BREAKDOWN -->
+  <div class="section-card" style="margin-bottom:16px">
+    <div class="section-card-title">① Text → Token Breakdown</div>
+    <div id="token-breakdown" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:36px"></div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:10px">Each block = one Token (subword unit) · Model processes token IDs, not raw characters</div>
+  </div>
+
+  <!-- VECTOR SPACE + BARS side by side -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="section-card">
+      <div class="section-card-title">② Semantic Vector Space (2D Projection)</div>
+      <div style="position:relative;height:240px;background:var(--bg3);border-radius:8px;overflow:hidden">
+        <canvas id="embedSpaceCanvas" style="width:100%;height:100%;display:block"></canvas>
+        <div style="position:absolute;bottom:8px;right:10px;font-size:9px;font-family:var(--mono);color:var(--text3)">t-SNE projection · semantically similar texts cluster together</div>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap">
+        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block"></span>Document Chunk</span>
+        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Current Chunk (highlighted)</span>
+        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f43f5e;border:2px solid #fff;display:inline-block"></span>Similar texts cluster close</span>
+      </div>
+    </div>
+    <div class="section-card">
+      <div class="section-card-title">③ Dimension Value Distribution (first 64 dims)</div>
+      <div class="vec-bars" id="vec-bars" style="height:80px"></div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px" id="vec-desc"></div>
+      <div style="margin-top:14px">
+        <div class="section-card-title" style="margin-bottom:8px">Model Parameters</div>
+        <div class="vec-info" id="p1-model-info"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COSINE SIMILARITY EXPLAINER -->
+  <div class="section-card" style="margin-bottom:16px">
+    <div class="section-card-title">④ Cosine Similarity — How vector "distance" is measured</div>
+    <div style="display:grid;grid-template-columns:1fr 200px;gap:16px;align-items:center">
+      <div>
+        <div style="display:flex;flex-direction:column;gap:8px" id="cosine-pairs"></div>
+      </div>
+      <div style="position:relative;height:160px;background:var(--bg3);border-radius:8px;overflow:hidden">
+        <canvas id="cosineCanvas" style="width:100%;height:100%;display:block"></canvas>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:10px">Cosine similarity = cosine of the angle between two vectors (1=identical, 0=orthogonal, -1=opposite) · Direction only, not magnitude</div>
+  </div>
+
+  <div class="section-card" style="margin-bottom:16px">
+    <div class="section-card-title">Vector Dimension Sample (first 20 dims)</div>
+    <div class="dim-sample" id="dim-sample"></div>
+  </div>
+
+  <div class="highlight-box" id="p1-highlight"></div>
+</div>
+
+<!-- ═══════════ PANEL 2: INDEXING ═══════════ -->
+<div class="panel" id="panel2">
+  <div class="panel-head">
+    <div class="panel-head-row">
+      <div>
+        <div class="panel-num">Stage 03 / 05</div>
+        <div class="panel-title">Vector Index Construction</div>
+        <div class="panel-desc" id="p2-desc">Building a searchable index structure and storing in the vector DB</div>
+      </div>
+      <span class="tag tag-purple" id="p2-tag">HNSW · Pinecone</span>
+    </div>
+  </div>
+
+  <div class="process-steps">
+    <div class="ps-item active"><div class="ps-dot"></div>Batch Upsert</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Graph Construction</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Hierarchical Index</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Persist to DB</div>
+  </div>
+
+  <div class="io-flow">
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">INPUT — Vector Collection</span>
+        <span class="io-type-badge">Vector[]</span>
+      </div>
+      <div class="io-body" id="p2-input"><!-- dynamic --></div>
+    </div>
+    <div class="flow-arrow-col">
+      <svg class="flow-arrow-svg" viewBox="0 0 40 24" fill="none">
+        <path d="M4 12 H32 M24 5 L32 12 L24 19" stroke="#374151" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="flow-arrow-label" id="p2-arrow-label">Index</div>
+    </div>
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">OUTPUT — Index Metadata</span>
+        <span class="io-type-badge">IndexInfo</span>
+      </div>
+      <div class="io-body" id="p2-output"><!-- dynamic --></div>
+    </div>
+  </div>
+
+  <!-- ANIMATED INDEX VIS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="section-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="section-card-title" style="margin-bottom:0" id="p2-vis-title">HNSW Search Path Animation</div>
+        <button onclick="replayIndexAnim()" style="font-size:10px;font-family:var(--mono);padding:3px 10px;border-radius:4px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer">▶ Replay</button>
+      </div>
+      <div class="index-canvas-wrap" style="height:260px">
+        <canvas id="indexCanvas"></canvas>
+      </div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px" id="p2-anim-desc">Query vector enters the index — narrowing layer by layer from the top</div>
+    </div>
+    <div class="section-card">
+      <div class="section-card-title">Index Performance Metrics</div>
+      <div class="index-stats" id="index-stats"><!-- dynamic --></div>
+    </div>
+  </div>
+
+  <!-- ALGORITHM EXPLAINER -->
+  <div class="section-card" style="margin-bottom:16px">
+    <div class="section-card-title" style="margin-bottom:12px">Three index algorithms · how they work</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="algo-cards"><!-- dynamic --></div>
+  </div>
+
+  <div class="grid4" id="p2-metrics"><!-- dynamic --></div>
+  <div class="highlight-box" id="p2-highlight"><!-- dynamic --></div>
+</div>
+
+<!-- ═══════════ PANEL 3: RETRIEVAL ═══════════ -->
+<div class="panel" id="panel3">
+  <div class="panel-head">
+    <div class="panel-head-row">
+      <div>
+        <div class="panel-num">Stage 04 / 05</div>
+        <div class="panel-title">Semantic Retrieval</div>
+        <div class="panel-desc" id="p3-desc">Encoding the query as a vector and searching the index for the most similar chunks</div>
+      </div>
+      <span class="tag tag-green" id="p3-tag">Top-5 · Semantic Search</span>
+    </div>
+  </div>
+
+  <div class="process-steps">
+    <div class="ps-item active"><div class="ps-dot"></div>Query Embed</div>
+    <div class="ps-item active"><div class="ps-dot"></div>ANN Search</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Similarity Calc</div>
+    <div class="ps-item active" id="p3-rerank-step"><div class="ps-dot"></div>Reranking</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Top-K Return</div>
+  </div>
+
+  <div class="io-flow">
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">INPUT — User Query</span>
+        <span class="io-type-badge">Query</span>
+      </div>
+      <div class="io-body" id="p3-input"><!-- dynamic --></div>
+    </div>
+    <div class="flow-arrow-col">
+      <svg class="flow-arrow-svg" viewBox="0 0 40 24" fill="none">
+        <path d="M4 12 H32 M24 5 L32 12 L24 19" stroke="#374151" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="flow-arrow-label" id="p3-arrow-label">Retrieval</div>
+    </div>
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">OUTPUT — Relevant Docs</span>
+        <span class="io-type-badge">Result[]</span>
+      </div>
+      <div class="io-body" id="p3-output"><!-- dynamic --></div>
+    </div>
+  </div>
+
+  <div class="section-card" style="margin-bottom:16px">
+    <div class="section-card-title" id="p3-results-title">Results (ranked by relevance)</div>
+    <div class="result-list" id="result-list"></div>
+  </div>
+
+  <!-- VECTOR SPACE RETRIEVAL VIS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="section-card">
+      <div class="section-card-title">Vector Space Search Process (2D Projection)</div>
+      <div style="position:relative;height:280px;background:var(--bg3);border-radius:8px;overflow:hidden">
+        <canvas id="retrievalCanvas" style="width:100%;height:100%;display:block"></canvas>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap">
+        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block"></span>Document Vector</span>
+        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#f43f5e;border-radius:2px;transform:rotate(45deg);display:inline-block"></span>Query Vector</span>
+        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block"></span>Top-K Hit</span>
+      </div>
+    </div>
+    <div class="section-card">
+      <div class="section-card-title">Similarity Score Distribution</div>
+      <div id="score-chart" style="display:flex;flex-direction:column;gap:10px;padding:4px 0"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="section-card-title" style="margin-bottom:8px">Retrieval Strategy Comparison</div>
+        <div id="algo-compare" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="highlight-box" id="p3-highlight"></div>
+</div>
+
+<!-- ═══════════ PANEL 4: Augmented Generation ═══════════ -->
+<div class="panel" id="panel4">
+  <div class="panel-head">
+    <div class="panel-head-row">
+      <div>
+        <div class="panel-num">Stage 05 / 05</div>
+        <div class="panel-title">Prompt Construction & Augmented Generation</div>
+        <div class="panel-desc" id="p4-desc">Injecting retrieved context into the Prompt and sending to the LLM to generate the final answer</div>
+      </div>
+      <span class="tag tag-coral" id="p4-tag">GPT-4o · Standard Template</span>
+    </div>
+  </div>
+
+  <div class="process-steps">
+    <div class="ps-item active"><div class="ps-dot"></div>Context Assembly</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Prompt Build</div>
+    <div class="ps-item active"><div class="ps-dot"></div>LLM Call</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Parse Answer</div>
+    <div class="ps-item active"><div class="ps-dot"></div>Source Citation</div>
+  </div>
+
+  <div class="io-flow">
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">INPUT — Retrieved Docs + Query</span>
+        <span class="io-type-badge">RAGInput</span>
+      </div>
+      <div class="io-body" id="p4-input"><!-- dynamic --></div>
+    </div>
+    <div class="flow-arrow-col">
+      <svg class="flow-arrow-svg" viewBox="0 0 40 24" fill="none">
+        <path d="M4 12 H32 M24 5 L32 12 L24 19" stroke="#374151" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="flow-arrow-label" id="p4-arrow-label">LLM</div>
+    </div>
+    <div class="io-card">
+      <div class="io-card-head">
+        <span class="io-card-title">OUTPUT — LLM Answer</span>
+        <span class="io-type-badge" id="p4-out-type">Response</span>
+      </div>
+      <div class="io-body" id="p4-output"><!-- dynamic --></div>
+    </div>
+  </div>
+
+  <div class="prompt-builder" id="prompt-builder">
+    <div class="prompt-tabs">
+      <div class="prompt-tab active" onclick="showTab(0)">System Prompt</div>
+      <div class="prompt-tab" onclick="showTab(1)">Retrieved Context</div>
+      <div class="prompt-tab" onclick="showTab(2)">Full Prompt</div>
+      <div class="prompt-tab" onclick="showTab(3)">API Request</div>
+    </div>
+    <div class="prompt-tab-content active" id="ptab0">
+      <div class="prompt-block p-sys" id="prompt-sys"><!-- dynamic --></div>
+    </div>
+    <div class="prompt-tab-content" id="ptab1">
+      <div class="prompt-block p-ctx" id="prompt-ctx"><!-- dynamic --></div>
+    </div>
+    <div class="prompt-tab-content" id="ptab2">
+      <div class="prompt-block" id="prompt-full"><!-- dynamic --></div>
+    </div>
+    <div class="prompt-tab-content" id="ptab3">
+      <div class="prompt-block" id="prompt-api"><!-- dynamic --></div>
+    </div>
+  </div>
+
+  <div class="final-answer">
+    <div class="final-answer-head">
+      <div class="final-answer-dot"></div>
+      <div class="final-answer-title" id="p4-llm-name">GPT-4o Generating Answer</div>
+    </div>
+    <div id="final-answer-body"><!-- dynamic --></div>
+  </div>
+
+  <div class="grid4" id="p4-metrics"><!-- dynamic --></div>
+</div>
+
+</main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let currentStage = 0;
+
+function getState() {
+  return {
+    chunk: document.getElementById('sel-chunk').value,
+    embed: document.getElementById('sel-embed').value,
+    db: document.getElementById('sel-db').value,
+    index: document.getElementById('sel-index').value,
+    retrieval: document.getElementById('sel-retrieval').value,
+    llm: document.getElementById('sel-llm').value,
+    query: document.getElementById('globalQuery').value || 'How tall is the Hall of Supreme Harmony, and what are its historical stories?',
+  };
+}
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+function goTo(i) {
+  _clearAll();
+  if (_indexAnimFrame) { cancelAnimationFrame(_indexAnimFrame); _indexAnimFrame = null; }
+  document.querySelectorAll('.panel').forEach((p,j) => p.classList.toggle('active', j===i));
+  document.querySelectorAll('.stage-nav-item').forEach((n,j) => n.classList.toggle('active', j===i));
+  document.querySelectorAll('.pipe-step').forEach((n,j) => n.classList.toggle('active', j===i));
+  currentStage = i;
+  const s = getState();
+  setTimeout(() => {
+    if (i === 1) { drawEmbedSpace(EMBED_CONFIG[s.embed].seed); drawCosineVis(EMBED_CONFIG[s.embed].seed); }
+    if (i === 2) drawIndexCanvas(s.index);
+    if (i === 3) drawRetrievalCanvas(RETRIEVAL_CONFIG[s.retrieval].scores, s.retrieval);
+  }, 50);
+}
+
+// ═══════════════════════════════════════════════
+//  CONFIG MAPS
+// ═══════════════════════════════════════════════
+const EMBED_CONFIG = {
+  te3s:  { name:'text-embedding-3-small', dim:1536, provider:'OpenAI',    speed:'~15ms', cost:'$0.02/M', norm:true, seed:1 },
+  te3l:  { name:'text-embedding-3-large', dim:3072, provider:'OpenAI',    speed:'~25ms', cost:'$0.13/M', norm:true, seed:2 },
+  bge:   { name:'BGE-M3',                 dim:1024, provider:'BAAI',      speed:'~8ms',  cost:'Self-hosted',   norm:true, seed:3 },
+  e5:    { name:'E5-large-v2',            dim:1024, provider:'Microsoft', speed:'~10ms', cost:'Self-hosted',   norm:true, seed:4 },
+  jina:  { name:'jina-embeddings-v3',     dim:1024, provider:'Jina AI',   speed:'~12ms', cost:'$0.018/M',norm:true, seed:5 },
+};
+
+const CHUNK_CONFIG = {
+  fixed:     { size:512, overlap:128, count:3, name:'Fixed Size', sep:'character boundary' },
+  semantic:  { size:380, overlap:80,  count:3, name:'Semantic Chunking',     sep:'semantic boundary' },
+  sentence:  { size:210, overlap:30,  count:4, name:'Sentence Splitting',     sep:'sentence boundary' },
+  recursive: { size:450, overlap:100, count:3, name:'Recursive',   sep:'paragraph/sentence/char' },
+};
+
+const INDEX_CONFIG = {
+  hnsw: { name:'HNSW', full:'Hierarchical Navigable Small World', search:'O(log n)', build:'Medium',  recall:'98%', mem:'High',  qps:'High',   color:'#3b82f6' },
+  flat: { name:'Flat', full:'Brute Force (Exact)',               search:'O(n)',     build:'Very Low',  recall:'100%',mem:'Low',    qps:'Low',   color:'#10b981' },
+  ivf:  { name:'IVF',  full:'Inverted File Index',              search:'O(√n)',    build:'High',  recall:'94%', mem:'Medium',  qps:'Very High', color:'#8b5cf6' },
+};
+
+const DB_CONFIG = {
+  milvus:   { name:'Milvus',    type:'Open Source',    filter:'Scalar Filter',  scale:'100B+ vecs', note:'LF AI Foundation project — HNSW/IVF/DiskANN support, distributed architecture, most widely used open-source vector DB' },
+  pinecone: { name:'Pinecone',  type:'Managed Cloud',  filter:'Metadata Filter',scale:'1B+ vecs',  note:'Fully managed cloud service, zero ops, ready out of the box — ideal for fast time-to-production' },
+  weaviate: { name:'Weaviate',  type:'Open Source/Cloud',filter:'GraphQL',    scale:'100M+ vecs', note:'Built-in multimodal support, GraphQL API, pluggable vectorization modules' },
+  qdrant:   { name:'Qdrant',    type:'Open Source',    filter:'Payload Filter', scale:'100M+ vecs', note:'Written in Rust, ultra-low latency, excellent Payload filtering performance' },
+  pgvector: { name:'pgvector',  type:'PostgreSQL Ext', filter:'SQL',          scale:'10M+ vecs',  note:'Adds vector search directly into Postgres — no new infrastructure needed, perfect for existing PG users' },
+  chroma:   { name:'ChromaDB',  type:'Open Source',    filter:'Metadata',     scale:'1M+ vecs',   note:'Python-native, dead simple setup, ideal for local dev and rapid prototyping' },
+  es:       { name:'Elasticsearch', type:'Open Source/Cloud',filter:'DSL Query',  scale:'100M+ vecs', note:'Adds dense_vector support on top of full-text search — great for teams already running Elasticsearch' },
+};
+
+const RETRIEVAL_CONFIG = {
+  semantic: { name:'Semantic',      algo:'Cosine Similarity',       topk:5, scores:[0.94,0.87,0.81,0.73,0.61], note:'Pure vector search, fast, best for semantically similar queries' },
+  hybrid:   { name:'Hybrid',        algo:'Semantic + BM25 / RRF',   topk:5, scores:[0.96,0.91,0.83,0.72,0.58], note:'Fuses semantic and keyword signals, balances recall and exact match' },
+  rerank:   { name:'Semantic + Rerank',   algo:'Two-stage: ANN + Cross-encoder', topk:5, scores:[0.98,0.89,0.79,0.67,0.54], note:'Initial ANN retrieval then re-scored by a Cross-encoder' },
+  mmr:      { name:'MMR Diversity',     algo:'Max Marginal Relevance',           topk:5, scores:[0.93,0.85,0.79,0.74,0.68], note:'Reduces result redundancy and maximises topic coverage' },
+};
+
+const LLM_CONFIG = {
+  gpt4o:   { name:'GPT-4o',            provider:'OpenAI',    ctx:'128K', latency:'~2.1s', cost:'$5/M', temp:0.1 },
+  claude35:{ name:'Claude 3.5 Sonnet', provider:'Anthropic', ctx:'200K', latency:'~1.8s', cost:'$3/M', temp:0.1 },
+  gemini:  { name:'Gemini 1.5 Pro',    provider:'Google',    ctx:'1M',   latency:'~2.5s', cost:'$3.5/M',temp:0.1 },
+  llama3:  { name:'Llama-3.1 70B',     provider:'Self-hosted',    ctx:'128K', latency:'~1.2s', cost:'Self-hosted',temp:0.1 },
+  qwen:    { name:'Qwen2.5 72B',       provider:'Alibaba Cloud',    ctx:'128K', latency:'~1.5s', cost:'¥0.4/M',temp:0.1 },
+};
+
+const CHUNK_TEXTS = [
+  'The Forbidden City, officially the Palace Museum, is the imperial palace of the Ming and Qing dynasties, located at the centre of Beijing. Construction began in 1406 (the fourth year of the Yongle reign) and was completed in 1420. It is the largest and best-preserved wooden palace complex in the world.',
+  'The Forbidden City covers roughly 720,000 m² with a floor area of about 150,000 m², housing over 70 palaces and 9,000 rooms. The entire complex faces south, divided into the Outer Court centred on the Hall of Supreme Harmony and the Inner Court centred on the Palace of Heavenly Purity, both aligned along the central axis.',
+  'The Hall of Supreme Harmony — colloquially the "Golden Throne Hall" — is the largest hall in the Forbidden City and China. It stands 35.05 m tall, covers 2,377 m², is supported by 72 columns, and served as the venue for coronations and imperial edicts.',
+  'The Palace Museum was established in 1925 and now holds over 1.8 million artefacts, including ceramics, paintings, bronzes, gold and silverware, jade, lacquerware, and enamels. More than 60,000 pieces are classified as Grade-1 national treasures, making it one of the most important museums in the world.',
+];
+
+// Per-chunk token simulations (Palace Museum content)
+const CHUNK_TOKENS = [
+  [{t:'Forbidden',id:8823},{t:'▁City',id:3421},{t:'imperial',id:2891},{t:'palace',id:234},{t:'Ming',id:9102},{t:'Qing',id:1823},{t:'dynasty',id:5521},{t:'Beijing',id:6234},{t:'largest',id:7108},{t:'wooden',id:4892},{t:'complex',id:3301}],
+  [{t:'covers',id:2341},{t:'720',id:1928},{t:'▁000',id:8831},{t:'sq▁m',id:4421},{t:'palaces',id:7108},{t:'70▁halls',id:9021},{t:'faces',id:8823},{t:'south',id:6612},{t:'central',id:7723},{t:'axis',id:5501},{t:'Outer',id:4490}],
+  [{t:'Hall',id:6612},{t:'Supreme',id:8834},{t:'Harmony',id:2210},{t:'tallest',id:7731},{t:'wooden',id:5423},{t:'35▁m',id:9312},{t:'72',id:8823},{t:'columns',id:4521},{t:'emperor',id:3892},{t:'throne',id:7234},{t:'ceremony',id:6109}],
+  [{t:'Museum',id:5512},{t:'1925',id:8841},{t:'artefacts',id:3301},{t:'1.8▁M',id:9921},{t:'ceramics',id:4421},{t:'paintings',id:3812},{t:'bronzes',id:7234},{t:'Grade-1',id:8823},{t:'60▁000',id:6612},{t:'treasures',id:5501},{t:'national',id:2891}],
+];
+
+const RESULT_TEXTS = [
+  'Construction of the Forbidden City began in 1406 and took 14 years; it is the world\'s largest surviving wooden palace complex...',
+  'The Forbidden City covers ~720,000 m², contains over 70 palaces, faces south, and is aligned along a central north-south axis...',
+  'The Hall of Supreme Harmony — tallest at 35.05 m — hosted coronations and imperial ceremonies...',
+  'The Palace Museum, founded in 1925, holds over 1.8 million artefacts and is among the world\'s most important museums...',
+  'The Forbidden City\'s red walls and golden-yellow roof tiles epitomise the grandeur and craftsmanship of Chinese imperial architecture...',
+];
+
+// ═══════════════════════════════════════════════
+//  RENDER FUNCTIONS
+// ═══════════════════════════════════════════════
+
+function renderPanel0(s) {
+  const cc = CHUNK_CONFIG[s.chunk];
+  document.getElementById('p0-tag').textContent = cc.name + ' · ' + cc.size + ' chars';
+  document.getElementById('p0-desc').textContent = 'Parsing, cleaning and splitting the source document into semantic units using the ' + cc.name + ' strategy';
+  document.getElementById('p0-arrow').textContent = cc.sep;
+
+  const chunks = CHUNK_TEXTS.slice(0, cc.count);
+  document.getElementById('p0-output').innerHTML =
+    `<span class="c-cmt">// Array&lt;Chunk&gt;, length: ${cc.count}</span>\n` +
+    `[\n` + chunks.map((_, i) =>
+      `  {\n    <span class="c-key">"id"</span>: <span class="c-str">"chunk_00${i+1}"</span>,\n    <span class="c-key">"chars"</span>: <span class="c-num">${cc.size}</span>,\n    <span class="c-key">"overlap"</span>: <span class="c-num">${cc.overlap}</span>,\n    <span class="c-key">"page"</span>: <span class="c-num">${i*3+1}</span>\n  }`
+    ).join(',\n') + '\n]';
+
+  // ── CHUNK COMPARISON GRID: same source text, 4 strategies ──
+  const SOURCE = 'The Forbidden City, officially the Palace Museum, is the imperial palace of the Ming and Qing dynasties. Construction began in 1406 and took 14 years. It covers roughly 720,000 m² with over 70 palaces. The Hall of Supreme Harmony stands 35.05 m tall and covers 2,377 m². The Palace Museum, founded in 1925, holds over 1.8 million artefacts.';
+
+  // Define cut points for each strategy on the SOURCE text
+  const strategies = [
+    {
+      key: 'fixed', name: 'Fixed Size', color: '#3b82f6',
+      desc: 'Hard cut every 80 chars, ignores semantic boundaries',
+      cuts: [80, 160, 240, 320, 400],
+      badge: 'Simplest'
+    },
+    {
+      key: 'sentence', name: 'Sentence Splitting', color: '#10b981',
+      desc: 'Splits on punctuation marks (., ?, !)',
+      cuts: [
+        SOURCE.indexOf('.', 10)+1,
+        SOURCE.indexOf('.', SOURCE.indexOf('.',10)+1)+1,
+        SOURCE.indexOf('.', SOURCE.indexOf('m²',100))+1,
+        SOURCE.indexOf('.', SOURCE.indexOf('m²',200))+1,
+      ].filter(Boolean),
+      badge: 'Common'
+    },
+    {
+      key: 'semantic', name: 'Semantic Chunking', color: '#8b5cf6',
+      desc: 'Detects topic shifts using NLP',
+      cuts: [
+        SOURCE.indexOf('It covers'),
+        SOURCE.indexOf('The Hall'),
+        SOURCE.indexOf('The Palace Museum'),
+      ],
+      badge: 'Best Quality'
+    },
+    {
+      key: 'recursive', name: 'Recursive Splitting', color: '#f59e0b',
+      desc: 'Paragraph → sentence → char, preserves largest unit',
+      cuts: [
+        SOURCE.indexOf('It covers'),
+        SOURCE.indexOf('The Palace Museum'),
+      ],
+      badge: 'Balanced'
+    },
+  ];
+
+  const CHUNK_COLORS = [
+    ['#3b82f620','#10b98120','#8b5cf620','#f59e0b20','#f43f5e20'],
+    ['#3b82f640','#10b98140','#8b5cf640','#f59e0b40','#f43f5e40'],
+  ];
+  const BORDER_COLORS = ['#3b82f6','#10b981','#8b5cf6','#f59e0b','#f43f5e'];
+
+  document.getElementById('chunk-compare-grid').innerHTML = strategies.map((st, si) => {
+    // Build highlighted text spans
+    const cuts = [...new Set(st.cuts.filter(c => c > 0 && c < SOURCE.length))].sort((a,b)=>a-b);
+    const segments = [];
+    let prev = 0;
+    cuts.forEach(cut => { segments.push({text: SOURCE.slice(prev, cut), idx: segments.length}); prev = cut; });
+    segments.push({text: SOURCE.slice(prev), idx: segments.length});
+
+    const segHtml = segments.map((seg, i) => {
+      const bg = ['#3b82f618','#10b98118','#8b5cf618','#f59e0b18','#f43f5e18'][i % 5];
+      const br = BORDER_COLORS[i % 5];
+      const isActive = st.key === s.chunk;
+      return `<span style="background:${bg};border-bottom:2px solid ${br};border-radius:2px 2px 0 0;position:relative">${seg.text}</span><span style="display:inline-block;width:2px;height:14px;background:${br};vertical-align:middle;margin:0 1px;opacity:0.8"></span>`;
+    });
+
+    const isActive = st.key === s.chunk;
+    return `<div data-chunkkey="${st.key}" style="background:${isActive?'var(--accent-bg)':'var(--bg3)'};border:1px solid ${isActive?'var(--accent-border)':'var(--border)'};border-radius:8px;padding:12px;cursor:pointer;transition:all 0.15s" onclick="selectChunk(this.dataset.chunkkey)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:600;font-family:var(--mono);color:${isActive?'var(--accent2)':'var(--text)}'}">${st.name}</span>
+        <span style="font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:10px;background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${st.badge}</span>
+      </div>
+      <div style="font-size:11px;line-height:1.7;color:var(--text2);font-family:var(--mono);margin-bottom:8px;word-break:break-all">${segHtml.join('')}</div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">${st.desc} · <span style="color:${st.color}">${cuts.length + 1} chunks</span></div>
+    </div>`;
+  }).join('');
+
+  // ── CHUNK DETAIL LIST ──
+  document.getElementById('p0-chunk-stats').textContent =
+    `${cc.count} chunks · ${cc.size} chars each · overlap ${cc.overlap}`;
+
+  document.getElementById('chunk-list').innerHTML = chunks.map((t, i) => {
+    const colors = ['#3b82f6','#10b981','#8b5cf6','#f59e0b'];
+    const c = colors[i % colors.length];
+    return `<div class="chunk-item" style="border-left-color:${c}">
+      <div class="chunk-meta">
+        <span class="chunk-id" style="color:${c}">chunk_00${i+1}</span>
+        <span class="chunk-stat">${cc.size} chars</span>
+        <span class="chunk-stat">overlap: ${cc.overlap}</span>
+        <span class="chunk-stat">page ${i*3+1}</span>
+      </div>
+      <div class="chunk-text">${t}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('p0-metrics').innerHTML = [
+    ['Total Chars', '12,680', ''],
+    ['Chunks', cc.count, 'accent'],
+    ['Chunk Size', cc.size + ' chars', ''],
+    ['Overlap', Math.round(cc.overlap/cc.size*100) + '%', ''],
+  ].map(([l,v,c]) => `<div class="metric-card"><div class="metric-label">${l}</div><div class="metric-val ${c}">${v}</div></div>`).join('');
+
+  document.getElementById('p0-highlight').innerHTML =
+    `<strong>Comparison:</strong> The four cards above show the same Palace Museum source text split by each strategy. Vertical bars mark cut points; colours represent distinct chunks. Click any card to switch the active strategy.<br>` +
+    `<strong>Current (${cc.name}):</strong>` +
+    (s.chunk==='fixed'?'Cuts every 512 characters regardless of meaning. Simplest and fastest, but often splits sentences mid-way, losing semantic coherence.':
+     s.chunk==='semantic'?'Uses an NLP model to detect topic shifts (e.g. from "architecture" to "artefacts"). Most accurate semantic boundaries, but requires extra inference cost.':
+     s.chunk==='sentence'?'Splits on punctuation (period/question/exclamation), preserving sentence integrity. Good for factual QA, but produces many fine-grained chunks.':
+     'Recursively tries paragraph → sentence → character splits within the length limit, preserving the largest coherent unit. LangChain\'s default.');
+
+  if (currentStage === 0) triggerPanel0Anims();
+}
+
+function renderPanel1(s) {
+  const ec = EMBED_CONFIG[s.embed];
+  const cc = CHUNK_CONFIG[s.chunk];
+  document.getElementById('p1-tag').textContent = ec.dim + 'd · ' + ec.provider;
+  document.getElementById('p1-desc').textContent = 'Encoding text chunks into ' + ec.dim + '-dimensional dense vectors using ' + ec.name;
+  document.getElementById('p1-arrow-label').textContent = ec.provider;
+
+  document.getElementById('p1-input').innerHTML =
+    `<span class="c-cmt">// Chunk text (sample)</span>\n<span class="c-str">"${CHUNK_TEXTS[0].substring(0,120)}..."</span>\n\n<span class="c-key">length</span>: <span class="c-num">${cc.size}</span> chars\n<span class="c-key">model</span>: <span class="c-str">"${ec.name}"</span>`;
+
+  const sampleVecs = Array.from({length:12}, (_,i) => ((Math.sin(i*7.3+ec.seed*2.1)*0.8)).toFixed(6));
+  document.getElementById('p1-output').innerHTML =
+    `<span class="c-cmt">// float32[${ec.dim}]</span>\n[\n  <span class="c-num">${sampleVecs.slice(0,6).join(',\n  ')}</span>,\n  <span class="c-cmt">  // ...${ec.dim} dims total</span>\n  <span class="c-num">${sampleVecs.slice(6).join(',\n  ')}</span>,\n  <span class="c-cmt">  // ...</span>\n]`;
+
+  // ── TOKEN BREAKDOWN ──
+  const chunkIdx = 0; // show chunk_001 tokens
+  const tokenColors = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#f43f5e','#06b6d4','#ec4899'];
+  const pseudoTokens = CHUNK_TOKENS[chunkIdx];
+  document.getElementById('token-breakdown').innerHTML =
+    pseudoTokens.map((tk, i) =>
+      `<span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">
+        <span style="background:${tokenColors[i%tokenColors.length]}22;border:1px solid ${tokenColors[i%tokenColors.length]}55;color:${tokenColors[i%tokenColors.length]};font-size:12px;font-family:var(--mono);padding:4px 8px;border-radius:4px;white-space:nowrap">${tk.t}</span>
+        <span style="font-size:9px;font-family:var(--mono);color:var(--text3)">${tk.id}</span>
+      </span>`
+    ).join('<span style="color:var(--text3);font-size:14px;align-self:center;margin-top:-10px">›</span>') +
+    `<span style="color:var(--text3);font-size:14px;align-self:center;margin-top:-10px">→</span>
+     <span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">
+       <span style="background:var(--bg4);border:1px solid var(--border2);color:var(--text2);font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px">[${ec.dim}d vector]</span>
+       <span style="font-size:9px;font-family:var(--mono);color:var(--text3)">float32[]</span>
+     </span>`;
+
+  // ── VECTOR BARS ──
+  const bars = Array.from({length:64}, (_,i) => {
+    const h = Math.abs(Math.sin(i*7.3+ec.seed*3.1)*46 + Math.cos(i*2.1+ec.seed)*20 + 24);
+    const colors = ['#3b82f6','#60a5fa','#1d9e75','#10b981','#8b5cf6','#f59e0b'];
+    return `<div class="vbar" style="height:${Math.min(76,Math.max(3,h))}px;background:${colors[i%colors.length]};opacity:${0.4+h/120}"></div>`;
+  });
+  document.getElementById('vec-bars').innerHTML = bars.join('');
+  document.getElementById('vec-desc').textContent = 'First 64 dims sampled · total ' + ec.dim + ' dims · each bar = absolute value of one dimension';
+
+  document.getElementById('p1-model-info').innerHTML = [
+    ['Model', ec.name],
+    ['Vector Dims', ec.dim],
+    ['Provider', ec.provider],
+    ['Latency', ec.speed],
+    ['Cost', ec.cost],
+    ['Normalized', ec.norm ? '✓ Yes' : '✗ No'],
+  ].map(([l,v]) => `<div class="vec-info-row"><span class="vec-info-label">${l}</span><span class="vec-info-val">${v}</span></div>`).join('');
+
+  // ── DIMENSION SAMPLE ──
+  const dimVals = Array.from({length:20}, (_,i) => {
+    const v = Math.sin(i*7.3+ec.seed*2.1)*0.8;
+    return `<span class="dim-val ${v>0?'pos':'neg'}">${v.toFixed(4)}</span>`;
+  });
+  document.getElementById('dim-sample').innerHTML = dimVals.join('');
+
+  document.getElementById('p1-highlight').innerHTML =
+    `<strong>How it works:</strong> ${ec.name} encodes text through a Transformer into a ${ec.dim}-dimensional vector. Each dimension captures an abstract semantic feature. ` +
+    (s.embed==='te3s'?'1536 dims — best balance of performance and cost, recommended for most use cases.':
+     s.embed==='te3l'?'3072 dims — richer semantic expression for high-precision tasks, ~2× storage cost.':
+     s.embed==='bge'?'BAAI open-source, excellent bilingual performance, fully self-hostable at zero cost.':
+     s.embed==='e5'?'Supports instruction prefixes to steer different tasks, strong generalisation.':
+     'Jina v3 supports Task LoRA adapters — one model handles retrieval, classification, and clustering.');
+
+  if (currentStage === 1) triggerPanel1Anims(ec.seed);
+  else { drawEmbedSpace(ec.seed); drawCosineVis(ec.seed); }
+}
+
+function drawEmbedSpace(seed) {
+  const canvas = document.getElementById('embedSpaceCanvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = (rect.width > 10 ? rect.width : 320);
+  const h = (rect.height > 10 ? rect.height : 240);
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for (let y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+
+  // Axis labels
+  ctx.fillStyle = 'rgba(74,85,104,0.6)';
+  ctx.font = '9px JetBrains Mono, monospace';
+  ctx.fillText('Semantic Dim 1', w-54, h-6);
+  ctx.save(); ctx.translate(10, h/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('Semantic Dim 2', 0, 0); ctx.restore();
+
+  // Semantic clusters based on Palace Museum content
+  const clusters = [
+    { label: 'Architecture', cx: w*0.30, cy: h*0.32, color: '#3b82f6', points: 5 },
+    { label: 'History', cx: w*0.62, cy: h*0.50, color: '#8b5cf6', points: 4 },
+    { label: 'Artefacts', cx: w*0.25, cy: h*0.68, color: '#10b981', points: 4 },
+    { label: 'Ceremonies', cx: w*0.70, cy: h*0.25, color: '#f59e0b', points: 3 },
+  ];
+
+  const allPoints = [];
+  clusters.forEach((cl, ci) => {
+    const pts = [];
+    for (let i = 0; i < cl.points; i++) {
+      const angle = (i / cl.points) * Math.PI * 2 + seed * 0.3 + ci * 0.8;
+      const r = 16 + Math.abs(Math.sin(i * 3.7 + seed + ci)) * 14;
+      pts.push({ x: cl.cx + Math.cos(angle)*r, y: cl.cy + Math.sin(angle)*r, color: cl.color, cluster: ci });
+    }
+    // intra-cluster lines
+    pts.forEach((p, i) => pts.forEach((q, j) => {
+      if (j <= i) return;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+      ctx.strokeStyle = cl.color + '25'; ctx.lineWidth = 0.8; ctx.stroke();
+    }));
+    allPoints.push(...pts);
+  });
+
+  // Draw all points
+  allPoints.forEach(p => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2);
+    ctx.fillStyle = p.color + 'cc'; ctx.fill();
+    ctx.strokeStyle = p.color; ctx.lineWidth = 1; ctx.stroke();
+  });
+
+  // Highlight chunk_001
+  const hi = allPoints[1];
+  ctx.beginPath(); ctx.arc(hi.x, hi.y, 9, 0, Math.PI*2);
+  ctx.fillStyle = '#f59e0b'; ctx.fill();
+  ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#fbbf24'; ctx.font = '9px JetBrains Mono, monospace';
+  ctx.fillText('chunk_001', hi.x + 11, hi.y + 3);
+
+  // Cluster labels
+  clusters.forEach(cl => {
+    ctx.fillStyle = cl.color + 'dd';
+    ctx.font = 'bold 9px JetBrains Mono, monospace';
+    ctx.fillText(cl.label, cl.cx - 18, cl.cy - 32);
+  });
+}
+
+function drawCosineVis(seed) {
+  const canvas = document.getElementById('cosineCanvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width > 10 ? rect.width : 200;
+  const h = rect.height > 10 ? rect.height : 160;
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w/2, cy = h/2 + 10, r = Math.min(w,h)*0.36;
+
+  // Circle outline
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1; ctx.stroke();
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(cx-r-8, cy); ctx.lineTo(cx+r+8, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy-r-8); ctx.lineTo(cx, cy+r+8); ctx.stroke();
+
+  // Three vectors: similar, orthogonal, query
+  const vectors = [
+    { angle: 0.2,              color: '#10b981', label: 'High similarity 0.94', cos: 0.94 },
+    { angle: 0.2 + 1.1,        color: '#3b82f6', label: 'Medium 0.72',   cos: 0.72 },
+    { angle: 0.2 + Math.PI*0.48, color: '#f59e0b', label: 'Low similarity 0.18', cos: 0.18 },
+  ];
+  const queryAngle = 0.2;
+  const qx = cx + Math.cos(queryAngle)*r, qy = cy - Math.sin(queryAngle)*r;
+
+  // Query vector
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(qx, qy);
+  ctx.strokeStyle = '#f43f5e'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(qx, qy, 4, 0, Math.PI*2);
+  ctx.fillStyle = '#f43f5e'; ctx.fill();
+  ctx.fillStyle = '#f43f5e'; ctx.font = '9px JetBrains Mono, monospace';
+  ctx.fillText('query', qx + 5, qy - 4);
+
+  // Other vectors + arc
+  vectors.forEach(v => {
+    const vx = cx + Math.cos(v.angle)*r, vy = cy - Math.sin(v.angle)*r;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(vx, vy);
+    ctx.strokeStyle = v.color + '99'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(vx, vy, 3, 0, Math.PI*2);
+    ctx.fillStyle = v.color; ctx.fill();
+
+    // arc showing angle
+    const startA = -queryAngle, endA = -(v.angle);
+    ctx.beginPath(); ctx.arc(cx, cy, 18, startA, endA, v.angle < queryAngle);
+    ctx.strokeStyle = v.color + '55'; ctx.lineWidth = 1; ctx.stroke();
+  });
+
+  // Cosine pairs text — palace museum context
+  document.getElementById('cosine-pairs').innerHTML = [
+    { label: '"Hall of Harmony — height guide" (highly relevant)', score: 0.94, color: '#10b981' },
+    { label: '"History of the Forbidden City" (partially related)',  score: 0.72, color: '#3b82f6' },
+    { label: '"Beijing subway map" (unrelated)',                  score: 0.18, color: '#4a5568' },
+  ].map(p => `
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+      <div>
+        <div style="font-size:11px;font-family:var(--mono);color:var(--text2);margin-bottom:3px">${p.label}</div>
+        <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${p.score*100}%;background:${p.color};border-radius:2px;transition:width 0.5s"></div>
+        </div>
+      </div>
+      <span style="font-size:13px;font-family:var(--mono);font-weight:500;color:${p.color}">${p.score}</span>
+    </div>`).join('');
+}
+
+function renderPanel2(s) {
+  const ic = INDEX_CONFIG[s.index];
+  const ec = EMBED_CONFIG[s.embed];
+  const dc = DB_CONFIG[s.db];
+  const cc = CHUNK_CONFIG[s.chunk];
+
+  document.getElementById('p2-tag').textContent = ic.name + ' · ' + dc.name;
+  document.getElementById('p2-desc').textContent = 'Building index with ' + ic.name + ' algorithm, storing to ' + dc.name;
+  document.getElementById('p2-arrow-label').textContent = ic.name;
+  document.getElementById('p2-vis-title').textContent = ic.name + ' Index Structure';
+
+  document.getElementById('p2-input').innerHTML =
+    `<span class="c-cmt">// Batch Vector Upsert</span>\n{\n  <span class="c-key">"vectors"</span>: [\n    {\n      <span class="c-key">"id"</span>: <span class="c-str">"chunk_001"</span>,\n      <span class="c-key">"values"</span>: [<span class="c-num">0.234, -0.118...</span>],\n      <span class="c-key">"metadata"</span>: {\n        <span class="c-key">"source"</span>: <span class="c-str">"palace_museum.pdf"</span>,\n        <span class="c-key">"page"</span>: <span class="c-num">1</span>\n      }\n    },\n    <span class="c-cmt">// ${cc.count} vectors, dim=${ec.dim}</span>\n  ]\n}`;
+
+  document.getElementById('p2-output').innerHTML =
+    `<span class="c-cmt">// Index Metadata</span>\n{\n  <span class="c-key">"index_type"</span>: <span class="c-str">"${ic.name}"</span>,\n  <span class="c-key">"dimension"</span>: <span class="c-num">${ec.dim}</span>,\n  <span class="c-key">"total_vectors"</span>: <span class="c-num">${cc.count}</span>,\n  <span class="c-key">"metric"</span>: <span class="c-str">"cosine"</span>,\n  <span class="c-key">"recall_rate"</span>: <span class="c-str">"${ic.recall}"</span>,\n  <span class="c-key">"db"</span>: <span class="c-str">"${dc.name}"</span>,\n  <span class="c-key">"status"</span>: <span class="c-str">"ready"</span>\n}`;
+
+  document.getElementById('index-stats').innerHTML = [
+    ['Index Algorithm',    ic.full,     ''],
+    ['Search Complexity',  ic.search,   'accent'],
+    ['Recall Rate',  ic.recall,   ic.recall==='100%'?'good':''],
+    ['Build Cost',    ic.build,    ''],
+    ['Query QPS',    ic.qps,      ic.qps==='High'||ic.qps==='Very High'?'good':''],
+    ['Memory Usage',    ic.mem,      ''],
+    ['Vector Database',  dc.name,     ''],
+    ['Deployment',    dc.type,     ''],
+    ['Filtering',    dc.filter,   ''],
+    ['Scale',    dc.scale,    'good'],
+  ].map(([l,v,c]) => `<div class="stat-row"><span class="stat-label">${l}</span><span class="stat-val ${c}">${v}</span></div>`).join('');
+
+  document.getElementById('p2-metrics').innerHTML = [
+    ['Vector Dims', ec.dim, 'accent'],
+    ['Indexed Vectors', cc.count, ''],
+    ['Recall', ic.recall, 'green'],
+    ['Write Latency', cc.count + '×3ms', ''],
+  ].map(([l,v,c]) => `<div class="metric-card"><div class="metric-label">${l}</div><div class="metric-val ${c}">${v}</div></div>`).join('');
+
+  document.getElementById('p2-highlight').innerHTML =
+    `<strong>Algorithm:</strong> ${ic.name} (${ic.full}) — ${ic.search} complexity for approximate nearest-neighbour search. ` +
+    (s.index==='hnsw'?'Multi-layer graph achieves the best recall/speed balance — go-to algorithm for production.':
+     s.index==='flat'?'Exact brute-force with 100% recall, but performance degrades severely at scale.':
+     'Clusters vectors to boost throughput for 10M+ vectors at a small recall cost.') +
+    `<br><br><strong>Vector Database：</strong> ${dc.note}`;
+
+  // ── ALGO EXPLAINER CARDS ──
+  const algoCards = [
+    { key:'hnsw', name:'HNSW', color:'#3b82f6', full:'Hierarchical Navigable Small World',
+      how:'Multi-layer graph: search enters at the top (coarse) and descends layer by layer — like zooming into a map',
+      complexity:'O(log n)', recall:'~98%', speed:'Very Fast', best:'Production' },
+    { key:'flat', name:'Flat', color:'#10b981', full:'Brute Force (Exact)',
+      how:'Every query is compared against every vector — no shortcuts, guaranteed 100% accuracy',
+      complexity:'O(n)', recall:'100%', speed:'Slow', best:'Small / Eval' },
+    { key:'ivf',  name:'IVF',  color:'#8b5cf6', full:'Inverted File Index',
+      how:'Pre-clusters vectors with K-Means. At query time, only the nearest cluster is searched',
+      complexity:'O(√n)', recall:'~94%', speed:'Fast', best:'Huge Scale' },
+  ];
+  const algoDom = document.getElementById('algo-cards');
+  if (algoDom) {
+    algoDom.innerHTML = algoCards.map(a => {
+      const active = a.key === s.index;
+      return `<div data-indexkey="${a.key}" style="background:${active?a.color+'18':'var(--bg3)'};border:1px solid ${active?a.color+'55':'var(--border)'};border-radius:8px;padding:14px;cursor:pointer;transition:all 0.15s" onclick="selectIndex(this.dataset.indexkey)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:15px;font-weight:700;font-family:var(--mono);color:${a.color}">${a.name}</span>
+          ${active?`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:${a.color}33;color:${a.color};font-family:var(--mono)">active</span>`:''}
+        </div>
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-bottom:8px">${a.full}</div>
+        <div style="font-size:11px;font-family:var(--mono);color:var(--text2);line-height:1.6;margin-bottom:10px;padding:8px;background:var(--bg4);border-radius:4px">${a.how}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+          ${[['Search Complexity',a.complexity],['Recall',a.recall],['Speed',a.speed],['Best For',a.best]].map(([k,v])=>
+            `<div style="background:var(--bg4);border-radius:4px;padding:4px 8px"><div style="font-size:9px;color:var(--text3);font-family:var(--mono)">${k}</div><div style="font-size:11px;font-weight:600;color:${active?a.color:'var(--text)'};font-family:var(--mono)">${v}</div></div>`
+          ).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  drawIndexCanvas(s.index);
+}
+
+function renderPanel3(s) {
+  const rc = RETRIEVAL_CONFIG[s.retrieval];
+  const q = s.query;
+
+  document.getElementById('p3-tag').textContent = 'Top-5 · ' + rc.name;
+  document.getElementById('p3-desc').textContent = 'Encoding the query as a vector and searching for the most relevant chunks using ' + rc.algo;
+  document.getElementById('p3-arrow-label').textContent = rc.name;
+  document.getElementById('p3-results-title').textContent = 'Results — ' + rc.name + ' (ranked by relevance)';
+
+  const ec = EMBED_CONFIG[s.embed];
+  document.getElementById('p3-input').innerHTML =
+    `<span class="c-cmt">// Query vectorisation</span>\n<span class="c-key">query</span>: <span class="c-str">"${q}"</span>\n\n↓ embed(query)\n\n<span class="c-cmt">// float32[${ec.dim}]</span>\n[<span class="c-num">0.234, -0.118,\n 0.089,  0.312,\n-0.201,  0.445, ...</span>]\n\n<span class="c-key">top_k</span>: <span class="c-num">${rc.topk}</span>\n<span class="c-key">metric</span>: <span class="c-str">"cosine"</span>`;
+
+  document.getElementById('p3-output').innerHTML =
+    `<span class="c-cmt">// Top-${rc.topk} results</span>\n` +
+    rc.scores.map((sc, i) => `{\n  <span class="c-key">"id"</span>: <span class="c-str">"chunk_00${i+1}"</span>,\n  <span class="c-key">"score"</span>: <span class="c-num">${sc}</span>\n}`).join(',\n');
+
+  const reranked = s.retrieval === 'rerank';
+  document.getElementById('p3-rerank-step').className = 'ps-item' + (reranked ? ' active' : '');
+
+  document.getElementById('result-list').innerHTML = rc.scores.map((sc, i) =>
+    `<div class="result-item ${i===0?'top1':''}">
+      <div class="result-rank">#${i+1}</div>
+      <div class="result-text-block">
+        <div class="result-id">chunk_00${i+1} · page ${i*3+1}</div>
+        <div class="result-text">${RESULT_TEXTS[i]}</div>
+      </div>
+      <div class="result-score-col">
+        <div class="result-score-val">${sc.toFixed(3)}</div>
+        <div class="score-bar-bg"><div class="score-bar-fill" style="width:${sc*100}%"></div></div>
+      </div>
+    </div>`
+  ).join('');
+
+  // Score chart
+  document.getElementById('score-chart').innerHTML = rc.scores.map((sc, i) => {
+    const color = i === 0 ? '#10b981' : i < 3 ? '#3b82f6' : '#4a5568';
+    return `<div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:10px;font-family:var(--mono);color:var(--text3)">chunk_00${i+1}</span>
+        <span style="font-size:11px;font-family:var(--mono);color:${color};font-weight:500">${sc.toFixed(3)}</span>
+      </div>
+      <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${sc*100}%;background:${color};border-radius:3px;transition:width 0.5s ${i*0.08}s"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Algo compare
+  const algoRows = [
+    { name:'Semantic Search',   speed:'⚡⚡⚡', recall:'★★★☆☆', cost:'Low' },
+    { name:'Hybrid',     speed:'⚡⚡',   recall:'★★★★☆', cost:'Med' },
+    { name:'Rerank',     speed:'⚡',     recall:'★★★★★', cost:'High' },
+    { name:'MMR',        speed:'⚡⚡',   recall:'★★★☆☆', cost:'Med' },
+  ];
+  document.getElementById('algo-compare').innerHTML = algoRows.map((a, i) => {
+    const cur = ['semantic','hybrid','rerank','mmr'][i] === s.retrieval;
+    return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 30px;gap:6px;align-items:center;padding:4px 6px;border-radius:4px;background:${cur?'var(--accent-bg)':'transparent'};border:1px solid ${cur?'var(--accent-border)':'transparent'}">
+      <span style="font-size:10px;font-family:var(--mono);color:${cur?'var(--accent2)':'var(--text3)'}">${a.name}</span>
+      <span style="font-size:9px;font-family:var(--mono);color:var(--text3)">${a.speed}</span>
+      <span style="font-size:9px;font-family:var(--mono);color:var(--text3)">${a.recall}</span>
+      <span style="font-size:9px;font-family:var(--mono);color:var(--text3)">${a.cost}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('p3-highlight').innerHTML =
+    `<strong>Strategy:</strong> ${rc.algo}. ${rc.note}. ` +
+    (s.retrieval==='hybrid'?' RRF (Reciprocal Rank Fusion) merges two ranked lists, significantly boosting precision for borderline queries.':
+     s.retrieval==='rerank'?' Cross-encoder scores each query-doc pair — higher precision than bi-encoder at ~30-50ms extra latency.':
+     s.retrieval==='mmr'?' MMR penalises overly similar results, ideal for summarisation tasks needing diverse coverage.':'');
+
+  if (currentStage === 3) triggerPanel3Anims();
+  setTimeout(() => drawRetrievalCanvas(rc.scores, s.retrieval), currentStage === 3 ? 400 : 30);
+}
+
+function drawRetrievalCanvas(scores, retrieval) {
+  const canvas = document.getElementById('retrievalCanvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect3 = canvas.getBoundingClientRect();
+  const w = rect3.width > 10 ? rect3.width : 400;
+  const h = rect3.height > 10 ? rect3.height : 280;
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < w; x += 36) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for (let y = 0; y < h; y += 36) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+
+  // Document points (fixed positions simulating vector space)
+  // Topic labels per chunk (palace content)
+  const chunkTopics = ['Hall Height','Palace Layout','Ceremonies','Artefacts','History','City Walls','Garden','Side Palaces','Chambers','Craftsmanship'];
+
+  const docPoints = [
+    { x: w*0.38, y: h*0.38, label: 'chunk_001', topic: chunkTopics[0], score: scores[0] },
+    { x: w*0.45, y: h*0.50, label: 'chunk_002', topic: chunkTopics[1], score: scores[1] },
+    { x: w*0.52, y: h*0.32, label: 'chunk_003', topic: chunkTopics[2], score: scores[2] },
+    { x: w*0.22, y: h*0.55, label: 'chunk_004', topic: chunkTopics[3], score: scores[3] },
+    { x: w*0.60, y: h*0.62, label: 'chunk_005', topic: chunkTopics[4], score: scores[4] },
+    { x: w*0.15, y: h*0.20, label: 'chunk_006', topic: chunkTopics[5], score: 0.21 },
+    { x: w*0.75, y: h*0.18, label: 'chunk_007', topic: chunkTopics[6], score: 0.18 },
+    { x: w*0.80, y: h*0.72, label: 'chunk_008', topic: chunkTopics[7], score: 0.15 },
+    { x: w*0.28, y: h*0.80, label: 'chunk_009', topic: chunkTopics[8], score: 0.19 },
+    { x: w*0.68, y: h*0.82, label: 'chunk_010', topic: chunkTopics[9], score: 0.13 },
+  ];
+
+  // Query point
+  const qx = w*0.42, qy = h*0.42;
+
+  // Draw search radius circle
+  const topScore = scores[0];
+  const radius = w * 0.28;
+  ctx.beginPath(); ctx.arc(qx, qy, radius, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(59,130,246,0.15)'; ctx.lineWidth = 1;
+  ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(59,130,246,0.04)'; ctx.fill();
+
+  // Draw distance lines to top-5 docs
+  docPoints.slice(0, 5).forEach((p, i) => {
+    ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(p.x, p.y);
+    const alpha = 0.15 + p.score * 0.5;
+    ctx.strokeStyle = i === 0 ? `rgba(16,185,129,${alpha+0.2})` : `rgba(59,130,246,${alpha})`;
+    ctx.lineWidth = i === 0 ? 1.5 : 0.8;
+    ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+
+    // Distance label
+    const mx = (qx + p.x) / 2, my = (qy + p.y) / 2;
+    ctx.fillStyle = i === 0 ? '#10b981' : '#4a5568';
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.fillText(p.score.toFixed(2), mx + 4, my);
+  });
+
+  // Draw all doc points
+  docPoints.forEach((p, i) => {
+    const isTopK = i < 5;
+    const isTop1 = i === 0;
+    const r = isTop1 ? 7 : isTopK ? 5.5 : 4;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+    ctx.fillStyle = isTop1 ? '#10b981' : isTopK ? '#3b82f6cc' : '#374151';
+    ctx.fill();
+    if (isTop1) { ctx.strokeStyle = '#34d399'; ctx.lineWidth = 2; ctx.stroke(); }
+    if (isTopK) {
+      ctx.fillStyle = isTop1 ? '#10b981' : '#3b82f6';
+      ctx.font = '9px JetBrains Mono, monospace';
+      ctx.fillText(p.topic, p.x + 8, p.y - 2);
+      ctx.fillStyle = '#4a5568';
+      ctx.font = '8px JetBrains Mono, monospace';
+      ctx.fillText(p.label, p.x + 8, p.y + 8);
+    }
+  });
+
+  // Query vector (diamond shape)
+  ctx.save();
+  ctx.translate(qx, qy); ctx.rotate(Math.PI/4);
+  ctx.beginPath(); ctx.rect(-7,-7,14,14);
+  ctx.fillStyle = '#f43f5e'; ctx.fill();
+  ctx.strokeStyle = '#fb7185'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#fb7185'; ctx.font = '10px JetBrains Mono, monospace';
+  ctx.fillText('Query Vector', qx + 10, qy - 8);
+  // Show truncated query
+  const shortQ = retrieval === 'semantic' ? '"How tall is the Hall?"' : '"Hall of Harmony..."';
+  ctx.fillStyle = '#4a5568'; ctx.font = '8px JetBrains Mono, monospace';
+  ctx.fillText(shortQ, qx + 10, qy + 3);
+
+  // Legend for retrieval strategy
+  ctx.fillStyle = '#4a5568'; ctx.font = '9px JetBrains Mono, monospace';
+  const strategyLabel = retrieval==='hybrid'?'Hybrid (Semantic+BM25)':retrieval==='rerank'?'Semantic + Rerank':retrieval==='mmr'?'MMR Diversity':'Pure Semantic Search';
+  ctx.fillText('strategy: ' + strategyLabel, 8, h - 8);
+}
+
+function renderPanel4(s) {
+  const lc = LLM_CONFIG[s.llm];
+  const rc = RETRIEVAL_CONFIG[s.retrieval];
+  const q = s.query;
+
+  document.getElementById('p4-tag').textContent = lc.name + ' · Standard RAG';
+  document.getElementById('p4-arrow-label').textContent = lc.name;
+  document.getElementById('p4-llm-name').textContent = lc.name + ' — Generating Answer';
+
+  document.getElementById('p4-input').innerHTML =
+    `<span class="c-cmt">// RAG Input Assembly</span>\n{\n  <span class="c-key">"query"</span>: <span class="c-str">"${q}"</span>,\n  <span class="c-key">"contexts"</span>: [\n    <span class="c-cmt">// Top-${rc.topk} retrieved chunks</span>\n    { <span class="c-key">"id"</span>: <span class="c-str">"chunk_003"</span>, <span class="c-key">"score"</span>: <span class="c-num">${rc.scores[0]}</span> },\n    { <span class="c-key">"id"</span>: <span class="c-str">"chunk_002"</span>, <span class="c-key">"score"</span>: <span class="c-num">${rc.scores[1]}</span> },\n    <span class="c-cmt">// ...</span>\n  ]\n}`;
+
+  document.getElementById('p4-output').innerHTML =
+    `<span class="c-cmt">// LLM Response</span>\n{\n  <span class="c-key">"model"</span>: <span class="c-str">"${lc.name}"</span>,\n  <span class="c-key">"usage"</span>: {\n    <span class="c-key">"prompt_tokens"</span>: <span class="c-num">1024</span>,\n    <span class="c-key">"completion_tokens"</span>: <span class="c-num">248</span>\n  },\n  <span class="c-key">"latency_ms"</span>: <span class="c-num">1860</span>,\n  <span class="c-key">"finish_reason"</span>: <span class="c-str">"stop"</span>\n}`;
+
+  const sys = `You are a Palace Museum knowledge-base assistant. Answer strictly based on the reference material provided.\nIf the reference material does not contain the answer, say so clearly — do not fabricate.\nKeep answers concise, accurate, and cite the source.`;
+
+  const ctx = `[Reference 1 — chunk_003, score: ${rc.scores[0]}]\n${CHUNK_TEXTS[2]}\n\n[Reference 2 — chunk_002, score: ${rc.scores[1]}]\n${CHUNK_TEXTS[1]}\n\n[Reference 3 — chunk_001, score: ${rc.scores[2]}]\n${CHUNK_TEXTS[0]}`;
+
+  document.getElementById('prompt-sys').textContent = sys;
+  document.getElementById('prompt-ctx').textContent = ctx;
+  document.getElementById('prompt-full').innerHTML =
+    `<span class="p-sys">[System]\n${sys}\n\n</span><span class="p-ctx">[Context]\n${ctx}\n\n</span><span class="p-q">[Question]\n${q}</span>`;
+
+  document.getElementById('prompt-api').innerHTML =
+    `{\n  <span class="c-key">"model"</span>: <span class="c-str">"${lc.name.toLowerCase().replace(/ /g,'-')}"</span>,\n  <span class="c-key">"max_tokens"</span>: <span class="c-num">1024</span>,\n  <span class="c-key">"temperature"</span>: <span class="c-num">${lc.temp}</span>,\n  <span class="c-key">"messages"</span>: [\n    {\n      <span class="c-key">"role"</span>: <span class="c-str">"system"</span>,\n      <span class="c-key">"content"</span>: <span class="c-str">"You are a Palace Museum QA assistant..."</span>\n    },\n    {\n      <span class="c-key">"role"</span>: <span class="c-str">"user"</span>,\n      <span class="c-key">"content"</span>: <span class="c-str">"[3 Palace Museum docs + user question, ~1024 tokens]"</span>\n    }\n  ]\n}`;
+
+  // Generate answer based on query content
+  const isHeightQuery = q.toLowerCase().includes('tall') || q.toLowerCase().includes('height') || q.toLowerCase().includes('hall');
+  const answerSteps = isHeightQuery ? [
+    { num: 'Height', text: 'The Hall of Supreme Harmony stands 35.05 m tall — the highest structure in the Forbidden City and the largest surviving wooden hall in China.' },
+    { num: 'Scale', text: 'The hall covers 2,377 m² and is supported by 72 columns, a testament to imperial grandeur.' },
+    { num: 'Function', text: 'Colloquially called the "Golden Throne Hall", it hosted coronations, imperial edicts, and other major state ceremonies.' },
+    { num: 'History', text: 'Positioned at the heart of the central axis, it was first built in the Yongle reign of the Ming dynasty; the current structure is a Qing dynasty reconstruction.' },
+  ] : [
+    { num: 'Overview', text: 'The Forbidden City (Palace Museum) served as the imperial palace for the Ming and Qing dynasties, built in 1406 and covering ~720,000 m².' },
+    { num: 'Buildings', text: 'Over 70 palaces and 9,000 rooms, centred on the Hall of Supreme Harmony, all aligned along a north-south central axis.' },
+    { num: 'Collection', text: 'The Palace Museum holds over 1.8 million artefacts — ceramics, paintings, bronzes and more — with 60,000+ Grade-1 national treasures.' },
+    { num: 'Significance', text: 'The world\'s largest and best-preserved wooden palace complex, inscribed as a UNESCO World Heritage Site.' },
+  ];
+
+  if (currentStage === 4) {
+    // Animated typewriter version — body filled by triggerPanel4Anims
+    document.getElementById('final-answer-body').innerHTML = '';
+    triggerPanel4Anims(answerSteps, lc, rc);
+  } else {
+    // Static version for background updates
+    document.getElementById('final-answer-body').innerHTML =
+      answerSteps.map(a =>
+        `<div class="answer-step"><span class="answer-step-num">${a.num}</span><span class="answer-step-text">${a.text}</span></div>`
+      ).join('') +
+      `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;font-family:var(--mono);color:var(--text3)">📎 Sources: chunk_003 (score:${rc.scores[0]}) · chunk_002 (score:${rc.scores[1]}) · chunk_001 (score:${rc.scores[2]}) | Model: ${lc.name} | Latency: ${lc.latency}</div>`;
+  }
+
+  document.getElementById('p4-metrics').innerHTML = [
+    ['Context Tokens', '1,024', 'accent'],
+    ['Generated Tokens',   '248',   ''],
+    ['End-to-End Latency',    lc.latency, 'amber'],
+    ['Context Window',    lc.ctx,     ''],
+  ].map(([l,v,c]) => `<div class="metric-card"><div class="metric-label">${l}</div><div class="metric-val ${c}">${v}</div></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  CANVAS — INDEX VIS (animated)
+// ═══════════════════════════════════════════════
+let _indexAnimFrame = null;
+
+function replayIndexAnim() {
+  const s = getState();
+  drawIndexCanvas(s.index);
+}
+
+function drawIndexCanvas(indexType) {
+  const canvas = document.getElementById('indexCanvas');
+  if (!canvas) return;
+  if (_indexAnimFrame) { cancelAnimationFrame(_indexAnimFrame); _indexAnimFrame = null; }
+
+  const dpr = window.devicePixelRatio || 1;
+  const rect2 = canvas.getBoundingClientRect();
+  const w = rect2.width > 10 ? rect2.width : 300;
+  const h = rect2.height > 10 ? rect2.height : 260;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  if (indexType === 'hnsw') {
+    // ── ANIMATED HNSW: query enters top, hops down through layers ──
+    const layers = [
+      { y: h*0.14, nodes: 3,  color: '#8b5cf6', r: 6,  label: 'Layer 2 — sparse navigation' },
+      { y: h*0.42, nodes: 7,  color: '#3b82f6', r: 5.5,label: 'Layer 1 — intermediate' },
+      { y: h*0.74, nodes: 14, color: '#10b981', r: 4.5,label: 'Layer 0 — all nodes' },
+    ];
+
+    // Build node positions
+    const allNodes = layers.map((layer, li) => {
+      const positions = [];
+      for (let i = 0; i < layer.nodes; i++) {
+        const x = (i + 0.8) * (w / (layer.nodes + 0.6));
+        positions.push({ x, y: layer.y, li, ni: i });
+      }
+      return positions;
+    });
+
+    // Define the search path: entry node → hop → narrow down → target
+    // Indices into each layer
+    const TARGET_NI = 8; // target is node 8 in layer 0
+    const searchPath = [
+      { li: 0, ni: 1 },          // enter layer 2
+      { li: 1, ni: 3 },          // jump to layer 1 entry
+      { li: 1, ni: 5 },          // hop within layer 1
+      { li: 2, ni: 6 },          // descend to layer 0
+      { li: 2, ni: TARGET_NI },  // arrive at target
+    ];
+
+    const STEP_DUR = 700; // ms per step
+    const TOTAL = (searchPath.length + 1) * STEP_DUR;
+    const startTime = performance.now();
+    let lastDesc = '';
+
+    const stepLabels = [
+      'Enter via top-layer entry node',
+      'Layer 2: rough navigation — locate region',
+      'Layer 1: narrow the candidate set',
+      'Descend into Layer 0 — full node set',
+      'Nearest neighbour found — returning result',
+    ];
+
+    function drawFrame(now) {
+      const elapsed = now - startTime;
+      const stepF = Math.min(elapsed / STEP_DUR, searchPath.length);
+      const stepIdx = Math.min(Math.floor(stepF), searchPath.length - 1);
+      const stepProg = stepF - Math.floor(stepF);
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Draw all edges (faint)
+      allNodes.forEach((layer, li) => {
+        // Intra-layer edges
+        layer.forEach((n, ni) => {
+          for (let j = ni+1; j < Math.min(layer.length, ni+3); j++) {
+            ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(layer[j].x, layer[j].y);
+            ctx.strokeStyle = layers[li].color + '18'; ctx.lineWidth = 0.6; ctx.stroke();
+          }
+        });
+        // Inter-layer edges (downward)
+        if (li < allNodes.length - 1) {
+          layer.forEach((n, ni) => {
+            const below = allNodes[li+1];
+            const closest = below.reduce((a,b) => Math.abs(a.x-n.x)<Math.abs(b.x-n.x)?a:b);
+            ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(closest.x, closest.y);
+            ctx.strokeStyle = '#ffffff08'; ctx.lineWidth = 0.5; ctx.stroke();
+          });
+        }
+      });
+
+      // Draw all nodes
+      allNodes.forEach((layer, li) => {
+        layer.forEach(n => {
+          ctx.beginPath(); ctx.arc(n.x, n.y, layers[li].r, 0, Math.PI*2);
+          ctx.fillStyle = layers[li].color + '55'; ctx.fill();
+          ctx.strokeStyle = layers[li].color + '88'; ctx.lineWidth = 0.8; ctx.stroke();
+        });
+        ctx.fillStyle = layers[li].color + 'aa';
+        ctx.font = '9px JetBrains Mono, monospace';
+        ctx.fillText(layers[li].label, 4, layers[li].y - 12);
+      });
+
+      // Draw visited path so far
+      for (let i = 0; i <= stepIdx; i++) {
+        const sp = searchPath[i];
+        const node = allNodes[sp.li][sp.ni];
+        // Highlight visited node
+        const alpha = i < stepIdx ? 'cc' : Math.round((0.4 + stepProg * 0.6) * 255).toString(16).padStart(2,'0');
+        ctx.beginPath(); ctx.arc(node.x, node.y, layers[sp.li].r + 3, 0, Math.PI*2);
+        ctx.fillStyle = '#f59e0b' + alpha; ctx.fill();
+        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5; ctx.stroke();
+
+        // Draw hop line to next
+        if (i < stepIdx) {
+          const next = searchPath[i+1];
+          const nextNode = allNodes[next.li][next.ni];
+          ctx.beginPath(); ctx.moveTo(node.x, node.y); ctx.lineTo(nextNode.x, nextNode.y);
+          ctx.strokeStyle = '#f59e0b99'; ctx.lineWidth = 2;
+          ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+        }
+        // Animate current hop line
+        if (i === stepIdx && i > 0 && stepProg < 1) {
+          const prev = searchPath[i-1];
+          const prevNode = allNodes[prev.li][prev.ni];
+          ctx.beginPath(); ctx.moveTo(prevNode.x, prevNode.y);
+          ctx.lineTo(prevNode.x + (node.x-prevNode.x)*stepProg, prevNode.y + (node.y-prevNode.y)*stepProg);
+          ctx.strokeStyle = '#f59e0bcc'; ctx.lineWidth = 2;
+          ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+        }
+      }
+
+      // Target node pulse at end
+      if (stepIdx === searchPath.length - 1) {
+        const target = allNodes[2][TARGET_NI];
+        const pulse = 0.5 + 0.5 * Math.sin(elapsed * 0.008);
+        ctx.beginPath(); ctx.arc(target.x, target.y, layers[2].r + 6 + pulse*3, 0, Math.PI*2);
+        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = '#10b981';
+        ctx.font = 'bold 9px JetBrains Mono, monospace';
+        ctx.fillText('✓ nearest', target.x + 8, target.y - 8);
+      }
+
+      // Step description
+      const desc = stepLabels[Math.min(stepIdx, stepLabels.length-1)];
+      if (desc !== lastDesc) {
+        document.getElementById('p2-anim-desc').textContent = `Step ${stepIdx+1}/${searchPath.length}: ${desc}`;
+        lastDesc = desc;
+      }
+
+      // Legend
+      ctx.fillStyle = '#374151'; ctx.font = '9px JetBrains Mono, monospace';
+      ctx.fillText('── search path', w-90, h-18);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('● visited node', w-90, h-6);
+
+      if (elapsed < TOTAL + 500) {
+        _indexAnimFrame = requestAnimationFrame(drawFrame);
+      }
+    }
+    _indexAnimFrame = requestAnimationFrame(drawFrame);
+
+  } else if (indexType === 'flat') {
+    // Flat: animate lines fanning out one by one
+    const cols = 9, rows = 5;
+    const cxStep = w / (cols + 1), cyStep = (h * 0.85) / (rows + 1);
+    const qx = w * 0.5, qy = h * 0.1;
+    const allPts = [];
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        allPts.push({ x: (c+1)*cxStep, y: h*0.2 + (r+1)*cyStep });
+
+    const startTime = performance.now();
+    function drawFlat(now) {
+      const elapsed = now - startTime;
+      ctx.clearRect(0, 0, w, h);
+      const revealed = Math.min(allPts.length, Math.floor(elapsed / 40));
+      allPts.forEach((p, i) => {
+        const done = i < revealed;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+        ctx.fillStyle = done ? '#10b981cc' : '#374151'; ctx.fill();
+        if (done) {
+          ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(p.x, p.y);
+          ctx.strokeStyle = 'rgba(16,185,129,0.07)'; ctx.lineWidth = 0.5; ctx.stroke();
+        }
+      });
+      // Query point
+      ctx.beginPath(); ctx.arc(qx, qy, 8, 0, Math.PI*2);
+      ctx.fillStyle = '#f59e0b'; ctx.fill();
+      ctx.fillStyle = '#f59e0b'; ctx.font = '10px JetBrains Mono, monospace';
+      ctx.fillText('Query Vector', qx+12, qy+4);
+      // Counter
+      ctx.fillStyle = '#4a5568'; ctx.font = '9px JetBrains Mono, monospace';
+      ctx.fillText(`Compared ${revealed}/${allPts.length} vectors — 100% Recall`, 6, h-6);
+      document.getElementById('p2-anim-desc').textContent = revealed < allPts.length
+        ? `Computing similarity with vector ${revealed+1} ...` : 'Full traversal complete — returning top matches';
+      if (revealed < allPts.length) _indexAnimFrame = requestAnimationFrame(drawFlat);
+    }
+    _indexAnimFrame = requestAnimationFrame(drawFlat);
+
+  } else {
+    // IVF: show cluster assignment then spotlight search cluster
+    const clusters = [
+      { cx: w*0.25, cy: h*0.32, color: '#3b82f6', n: 8,  label: 'Hall of Harmony' },
+      { cx: w*0.68, cy: h*0.24, color: '#8b5cf6', n: 7,  label: 'Artefacts' },
+      { cx: w*0.42, cy: h*0.68, color: '#10b981', n: 9,  label: 'Architecture' },
+      { cx: w*0.78, cy: h*0.65, color: '#f59e0b', n: 6,  label: 'History' },
+    ];
+    // Pre-generate stable points
+    const clusterPts = clusters.map(cl => {
+      const pts = [];
+      for (let i = 0; i < cl.n; i++) {
+        const a = (i/cl.n)*Math.PI*2 + cl.cx*0.1;
+        const d = 20 + (i%3)*8;
+        pts.push({ x: cl.cx+Math.cos(a)*d, y: cl.cy+Math.sin(a)*d });
+      }
+      return pts;
+    });
+
+    const startTime = performance.now();
+    const PHASES = [800, 1600, 2600]; // phase boundaries in ms
+    function drawIVF(now) {
+      const elapsed = now - startTime;
+      ctx.clearRect(0, 0, w, h);
+      const phase = elapsed < PHASES[0] ? 0 : elapsed < PHASES[1] ? 1 : 2;
+
+      clusters.forEach((cl, ci) => {
+        const isTarget = ci === 0; // cluster 0 is the target
+        const highlight = phase >= 1 && isTarget;
+        const dim = phase >= 1 && !isTarget;
+
+        // Cluster boundary circle
+        ctx.beginPath(); ctx.arc(cl.cx, cl.cy, 36, 0, Math.PI*2);
+        ctx.strokeStyle = highlight ? cl.color : cl.color + (dim?'22':'44');
+        ctx.lineWidth = highlight ? 2 : 0.8;
+        ctx.setLineDash(highlight ? [] : [3,3]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = highlight ? cl.color + '18' : cl.color + (dim?'06':'0c'); ctx.fill();
+
+        // Points
+        clusterPts[ci].forEach(p => {
+          ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+          ctx.fillStyle = dim ? '#374151' : cl.color + (highlight?'cc':'88'); ctx.fill();
+        });
+
+        // Centroid
+        ctx.beginPath(); ctx.arc(cl.cx, cl.cy, 7, 0, Math.PI*2);
+        ctx.fillStyle = dim ? '#374151' : cl.color;
+        ctx.fill();
+
+        // Label
+        ctx.fillStyle = dim ? '#374151' : cl.color + 'dd';
+        ctx.font = (highlight?'bold ':'') + '9px JetBrains Mono, monospace';
+        ctx.fillText(cl.label, cl.cx - 18, cl.cy - 42);
+      });
+
+      // Query vector
+      const qx = w*0.5, qy = h*0.48;
+      ctx.save(); ctx.translate(qx, qy); ctx.rotate(Math.PI/4);
+      ctx.beginPath(); ctx.rect(-7,-7,14,14);
+      ctx.fillStyle = '#f43f5e'; ctx.fill(); ctx.restore();
+      ctx.fillStyle = '#fb7185'; ctx.font = '10px JetBrains Mono, monospace';
+      ctx.fillText('query', qx+12, qy+4);
+
+      if (phase >= 1) {
+        // Arrow from query to nearest centroid
+        const tc = clusters[0];
+        const prog = phase === 1 ? Math.min((elapsed-PHASES[0])/(PHASES[1]-PHASES[0]),1) : 1;
+        const ex = qx + (tc.cx-qx)*prog, ey = qy + (tc.cy-qy)*prog;
+        ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(ex, ey);
+        ctx.strokeStyle = '#f43f5e99'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = '#4a5568'; ctx.font = '9px JetBrains Mono, monospace';
+        ctx.fillText('Locate nearest centroid', qx-10, qy-14);
+      }
+      if (phase >= 2) {
+        document.getElementById('p2-anim-desc').textContent = 'Searching only the nearest "Hall of Harmony" cluster, skipping the other 3 — much faster';
+      } else if (phase === 1) {
+        document.getElementById('p2-anim-desc').textContent = 'Query VectorLocating nearest cluster centroid...';
+      } else {
+        document.getElementById('p2-anim-desc').textContent = 'IVF pre-clusters vectors into 4 groups using K-Means, each cluster represents a semantic topic';
+      }
+
+      ctx.fillStyle = '#4a5568'; ctx.font = '9px JetBrains Mono, monospace';
+      ctx.fillText(`IVF — search nearest cluster, skip ${clusters.length-1}/${clusters.length} others`, 6, h-6);
+
+      if (elapsed < 4000) _indexAnimFrame = requestAnimationFrame(drawIVF);
+    }
+    _indexAnimFrame = requestAnimationFrame(drawIVF);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  PROMPT TABS
+// ═══════════════════════════════════════════════
+function showTab(i) {
+  document.querySelectorAll('.prompt-tab').forEach((t,j) => t.classList.toggle('active', j===i));
+  document.querySelectorAll('.prompt-tab-content').forEach((c,j) => c.classList.toggle('active', j===i));
+}
+
+// ═══════════════════════════════════════════════
+//  CARD CLICK HELPERS (avoid inline quote issues)
+// ═══════════════════════════════════════════════
+function selectChunk(key) {
+  document.getElementById('sel-chunk').value = key;
+  updateAll();
+}
+function selectIndex(key) {
+  document.getElementById('sel-index').value = key;
+  updateAll();
+}
+
+// ═══════════════════════════════════════════════
+//  ANIMATION ENGINE
+// ═══════════════════════════════════════════════
+
+// Central store for cancellable timers
+const _timers = [];
+function _setTimeout(fn, ms) { const id = setTimeout(fn, ms); _timers.push(id); return id; }
+function _clearAll() { _timers.forEach(clearTimeout); _timers.length = 0; }
+
+// ── Panel 0: Chunk scanning animation ──
+function animChunkScan() {
+  const grid = document.getElementById('chunk-compare-grid');
+  if (!grid) return;
+  const cards = grid.querySelectorAll('[data-chunkkey]');
+  cards.forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(10px)';
+    card.style.transition = 'none';
+    _setTimeout(() => {
+      card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, 80 + i * 120);
+  });
+
+  // Animate chunk list items
+  _setTimeout(() => {
+    const items = document.querySelectorAll('.chunk-item');
+    items.forEach((el, i) => {
+      el.classList.remove('anim-result');
+      void el.offsetWidth; // reflow
+      el.style.animationDelay = (i * 100) + 'ms';
+      el.classList.add('anim-result');
+    });
+  }, 550);
+}
+
+// ── Panel 1: Token pop-in animation ──
+function animTokens() {
+  const container = document.getElementById('token-breakdown');
+  if (!container) return;
+  const spans = container.querySelectorAll('span[style*="border"]');
+  spans.forEach((sp, i) => {
+    sp.style.opacity = '0';
+    sp.style.transform = 'scale(0.6) translateY(6px)';
+    sp.style.transition = 'none';
+    _setTimeout(() => {
+      sp.style.transition = 'opacity 0.3s cubic-bezier(0.34,1.56,0.64,1), transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+      sp.style.opacity = '1';
+      sp.style.transform = 'scale(1) translateY(0)';
+    }, 60 + i * 55);
+  });
+
+  // Animate vector bars: grow from bottom
+  _setTimeout(() => {
+    const bars = document.querySelectorAll('#vec-bars .vbar');
+    bars.forEach((b, i) => {
+      const h = b.style.height;
+      b.style.height = '0px';
+      b.style.transition = 'none';
+      _setTimeout(() => {
+        b.style.transition = `height 0.4s cubic-bezier(0.4,0,0.2,1) ${i * 8}ms`;
+        b.style.height = h;
+      }, i * 4);
+    });
+  }, 800);
+}
+
+// ── Panel 1: Embed space dot bounce-in ──
+function animEmbedSpaceDots(seed) {
+  // We re-draw with staggered opacity using a canvas animation pass
+  const canvas = document.getElementById('embedSpaceCanvas');
+  if (!canvas) return;
+  // Just trigger a redraw — the main drawEmbedSpace will run after
+  // Add entrance animation via a fade overlay
+  canvas.style.opacity = '0';
+  canvas.style.transition = 'opacity 0.5s ease';
+  _setTimeout(() => { canvas.style.opacity = '1'; }, 50);
+  _setTimeout(() => drawEmbedSpace(seed), 100);
+}
+
+// ── Panel 1: Cosine canvas fade ──
+function animCosineCanvas(seed) {
+  const canvas = document.getElementById('cosineCanvas');
+  if (!canvas) return;
+  canvas.style.opacity = '0';
+  canvas.style.transition = 'opacity 0.5s ease';
+  _setTimeout(() => { canvas.style.opacity = '1'; drawCosineVis(seed); }, 300);
+}
+
+// ── Panel 3: Result cards slide in + score bars animate ──
+function animResults() {
+  const items = document.querySelectorAll('#result-list .result-item');
+  items.forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-16px)';
+    el.style.transition = 'none';
+    _setTimeout(() => {
+      el.style.transition = `opacity 0.3s ease, transform 0.3s ease`;
+      el.style.opacity = '1';
+      el.style.transform = 'translateX(0)';
+    }, i * 90);
+  });
+
+  // Animate score bars in score-chart
+  _setTimeout(() => {
+    document.querySelectorAll('#score-chart .score-bar-fill, #result-list .score-bar-fill').forEach((bar, i) => {
+      const targetW = bar.style.width;
+      bar.style.width = '0%';
+      bar.style.transition = 'none';
+      _setTimeout(() => {
+        bar.style.transition = `width 0.6s cubic-bezier(0.4,0,0.2,1)`;
+        bar.style.width = targetW;
+      }, 200 + i * 60);
+    });
+  }, 100);
+
+  // Retrieval canvas: fade in
+  const rc = document.getElementById('retrievalCanvas');
+  if (rc) {
+    rc.style.opacity = '0';
+    rc.style.transition = 'opacity 0.4s ease';
+    _setTimeout(() => { rc.style.opacity = '1'; }, 500);
+  }
+}
+
+// ── Panel 4: Prompt layers fade in, then typewriter answer ──
+function animPromptAndAnswer(answerSteps, lc, rc) {
+  // Fade in prompt tabs panel
+  const pb = document.getElementById('prompt-builder');
+  if (pb) {
+    pb.style.opacity = '0';
+    pb.style.transform = 'translateY(8px)';
+    pb.style.transition = 'none';
+    _setTimeout(() => {
+      pb.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      pb.style.opacity = '1';
+      pb.style.transform = 'translateY(0)';
+    }, 100);
+  }
+
+  // Typewriter effect for final answer
+  _setTimeout(() => {
+    const body = document.getElementById('final-answer-body');
+    if (!body) return;
+    body.innerHTML = '';
+
+    // Build full text per step
+    let stepDelay = 0;
+    answerSteps.forEach((a, si) => {
+      _setTimeout(() => {
+        const stepEl = document.createElement('div');
+        stepEl.className = 'answer-step';
+        stepEl.style.opacity = '0';
+        stepEl.style.transform = 'translateX(-8px)';
+        stepEl.innerHTML = `<span class="answer-step-num">${a.num}</span><span class="answer-step-text" id="atype-${si}"></span>`;
+        body.appendChild(stepEl);
+
+        // Slide in the step container
+        _setTimeout(() => {
+          stepEl.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+          stepEl.style.opacity = '1';
+          stepEl.style.transform = 'translateX(0)';
+        }, 30);
+
+        // Type the text
+        const textEl = document.getElementById(`atype-${si}`);
+        if (!textEl) return;
+        let ci = 0;
+        const txt = a.text;
+        function typeChar() {
+          if (ci < txt.length) {
+            textEl.textContent += txt[ci++];
+            _setTimeout(typeChar, 18);
+          }
+        }
+        _setTimeout(typeChar, 80);
+      }, stepDelay);
+      stepDelay += 420;
+    });
+
+    // Footer
+    _setTimeout(() => {
+      const footer = document.createElement('div');
+      footer.style.cssText = 'margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;font-family:var(--mono);color:var(--text3);opacity:0;transition:opacity 0.4s ease';
+      footer.textContent = `📎 Sources: chunk_003 (score:${rc.scores[0]}) · chunk_002 (score:${rc.scores[1]}) · chunk_001 (score:${rc.scores[2]})  |  Model: ${lc.name}  |  Latency: ${lc.latency}`;
+      body.appendChild(footer);
+      _setTimeout(() => { footer.style.opacity = '1'; }, 100);
+    }, stepDelay + 200);
+  }, 600);
+
+  // Metrics cards pop in
+  _setTimeout(() => {
+    document.querySelectorAll('#p4-metrics .metric-card').forEach((c, i) => {
+      c.style.opacity = '0';
+      c.style.transform = 'scale(0.9)';
+      c.style.transition = 'none';
+      _setTimeout(() => {
+        c.style.transition = 'opacity 0.3s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+        c.style.opacity = '1';
+        c.style.transform = 'scale(1)';
+      }, i * 80);
+    });
+  }, 400);
+}
+
+// ── Panel 0: IO output typewriter ──
+function animIOTypewriter(elId, html, delayMs) {
+  _setTimeout(() => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 0.3s ease';
+    _setTimeout(() => {
+      el.innerHTML = html;
+      el.style.opacity = '1';
+    }, 150);
+  }, delayMs || 0);
+}
+
+// ─── PANEL-SPECIFIC ANIMATION TRIGGERS ───────────────────────
+// Called after each panel's render function sets the DOM
+
+function triggerPanel0Anims() { _setTimeout(animChunkScan, 50); }
+function triggerPanel1Anims(seed) {
+  _setTimeout(animTokens, 50);
+  animEmbedSpaceDots(seed);
+  animCosineCanvas(seed);
+}
+function triggerPanel3Anims() { _setTimeout(animResults, 60); }
+function triggerPanel4Anims(answerSteps, lc, rc) { animPromptAndAnswer(answerSteps, lc, rc); }
+
+// ═══════════════════════════════════════════════
+//  UPDATE ALL
+// ═══════════════════════════════════════════════
+function updateAll() {
+  const s = getState();
+  renderPanel0(s);
+  renderPanel1(s);
+  renderPanel2(s);
+  renderPanel3(s);
+  renderPanel4(s);
+  setTimeout(() => {
+    drawIndexCanvas(s.index);
+    if (currentStage === 1) { drawEmbedSpace(EMBED_CONFIG[s.embed].seed); drawCosineVis(EMBED_CONFIG[s.embed].seed); }
+    if (currentStage === 3) drawRetrievalCanvas(RETRIEVAL_CONFIG[s.retrieval].scores, s.retrieval);
+  }, 50);
+}
+
+// Init
+updateAll();
+</script>
+</body>
+</html>
